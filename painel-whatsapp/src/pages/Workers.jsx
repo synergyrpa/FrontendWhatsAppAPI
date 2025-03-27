@@ -1,27 +1,29 @@
 import { useEffect, useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import axios from 'axios';
+import { useNumbers } from '../context/NumbersContext';
 
 export default function Workers() {
-  const [workers, setWorkers] = useState([]);
+  const { workers, admins, numbersLoading, numbersErro } = useNumbers();
   const [novoNumero, setNovoNumero] = useState('');
   const [editando, setEditando] = useState(null); // ID do worker em edição
   const [valorEditado, setValorEditado] = useState('');
+  const [sucesso, setSucesso] = useState('');
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState('');
-  const [sucesso, setSucesso] = useState('');
-
-  useEffect(() => {
-    // Carrega os números disponíveis
-    const token = localStorage.getItem('token');
-    axios.get(`http://localhost:8000/api/v1/numbers`,{headers: {token: token}})
-      .then((res) => {
-        setWorkers(res.data.description.workers)
-        console.log(res.data.description.workers);
-      })
-      .catch(() => setErro('Erro ao carregar números'));
-    console.log(workers);
-  }, []);
+  
+  // const [workers, setWorkers] = useState([]);
+  // useEffect(() => {
+  //   // Carrega os números disponíveis
+  //   const token = localStorage.getItem('token');
+  //   axios.get(`http://localhost:8000/api/v1/numbers`,{headers: {token: token}})
+  //     .then((res) => {
+  //       setWorkers(res.data.description.workers)
+  //       console.log(res.data.description.workers);
+  //     })
+  //     .catch(() => setErro('Erro ao carregar números'));
+  //   console.log(workers);
+  // }, []);
 
   const carregarWorkers = async () => {
     try {

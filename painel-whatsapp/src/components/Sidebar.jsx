@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import LogoutButton from './LogoutButton';
+
 const Sidebar = () => {
   const location = useLocation();
 
@@ -11,7 +12,7 @@ const Sidebar = () => {
   ];
 
   return (
-    <aside className="w-64 h-screen bg-blue-700 text-white flex flex-col">
+    <aside className="flex flex-col min-h-screen w-full h-full">
       <div className="text-2xl font-bold p-6 border-b border-blue-500">
         Painel WA
       </div>
@@ -20,7 +21,7 @@ const Sidebar = () => {
           <Link
             key={link.path}
             to={link.path}
-            className={`block px-3 py-2 rounded transition ${
+            className={`block px-3 py-2 rounded ${
               location.pathname === link.path
                 ? 'bg-blue-900'
                 : 'hover:bg-blue-800'
