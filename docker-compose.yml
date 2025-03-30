@@ -1,0 +1,22 @@
+services:
+  # backend:
+  #   build: ./backend
+  #   container_name: api-fastapi
+  #   ports:
+  #     - "8000:8000"
+  #   networks:
+  #     - painelnet
+
+  frontend:
+    build: ./painel-whatsapp
+    container_name: painel-react
+    ports:
+      - "80:80"  # escuta na porta padrão!
+    # depends_on:
+    #   - backend
+    networks:
+      - painelnet
+
+networks:
+  painelnet:
+    driver: bridge
