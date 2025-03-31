@@ -12,7 +12,7 @@ export const NumbersProvider = ({ children }) => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:8000/api/v1/numbers', {
+      const res = await axios.get('https://api.synergyrpa.com/api/v1/numbers', {
         headers: { token },
       });
       setNumbers(res.data.description);

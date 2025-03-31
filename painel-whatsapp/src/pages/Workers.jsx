@@ -16,7 +16,7 @@ export default function Workers() {
   // useEffect(() => {
   //   // Carrega os números disponíveis
   //   const token = localStorage.getItem('token');
-  //   axios.get(`http://localhost:8000/api/v1/numbers`,{headers: {token: token}})
+  //   axios.get(`https://api.synergyrpa.com/api/v1/numbers`,{headers: {token: token}})
   //     .then((res) => {
   //       setWorkers(res.data.description.workers)
   //       console.log(res.data.description.workers);
@@ -28,7 +28,7 @@ export default function Workers() {
   const carregarWorkers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`http://localhost:8000/api/v1/numbers`,{headers: {token: token}});
+      const res = await axios.get(`https://api.synergyrpa.com/api/v1/numbers`,{headers: {token: token}});
       setWorkers(res.data.description.workers);
     } catch (err) {
       setErro('Erro ao carregar os números');

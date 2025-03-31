@@ -28,7 +28,7 @@ export default function Reports() {
   // useEffect(() => {
   //   const token = localStorage.getItem('token');
   //   axios
-  //     .get(`http://localhost:8000/api/v1/numbers`, { headers: { token } })
+  //     .get(`https://api.synergyrpa.com/api/v1/numbers`, { headers: { token } })
   //     .then((res) => {
   //       setWorkers(res.data.description.workers);
   //     })
@@ -46,7 +46,7 @@ export default function Reports() {
 
     try {
       console.log("Datas:",dataInicial, dataFinal);
-      const response = await axios.get('http://localhost:8000/api/v1/sends-report', {
+      const response = await axios.get('https://api.synergyrpa.com/api/v1/sends-report', {
         headers: { token: localStorage.getItem('token') },
         params: {
           from_number: numeroSelecionado,

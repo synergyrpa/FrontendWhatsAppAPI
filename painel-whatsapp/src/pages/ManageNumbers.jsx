@@ -15,7 +15,7 @@ export default function ManageNumbers() {
   // const [admins, setAdmins] = useState([]);
   // const carregarNumeros = async () => {
   //   try {
-  //     const response = await axios.get('http://localhost:8000/api/v1/numbers', {
+  //     const response = await axios.get('https://api.synergyrpa.com/api/v1/numbers', {
   //       headers: { token },
   //     });
   //     setWorkers(response.data.description.workers || []);
@@ -40,7 +40,7 @@ export default function ManageNumbers() {
 
     try {
       await axios.post(
-        'http://localhost:8000/api/v1/number',
+        'https://api.synergyrpa.com/api/v1/number',
         { number: novoNumero, role: tipoSelecionado },
         { headers: { token } }
       );
@@ -58,7 +58,7 @@ export default function ManageNumbers() {
     setSucesso('');
 
     try {
-      await axios.delete('http://localhost:8000/api/v1/number', {
+      await axios.delete('https://api.synergyrpa.com/api/v1/number', {
         headers: { token },
         data: { number, role: tipoSelecionado },
       });

@@ -13,7 +13,7 @@ export default function Login() {
     setErro('');
 
     try {
-      const response = await axios.post('http://localhost:8000/api/v1/login-user', {
+      const response = await axios.post('https://api.synergyrpa.com/api/v1/login-user', {
         login: email,
         password: senha,
       });

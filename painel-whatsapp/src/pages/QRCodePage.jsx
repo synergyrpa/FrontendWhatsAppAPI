@@ -14,7 +14,7 @@ export default function QRCodePage() {
   // useEffect(() => {
   //   const token = localStorage.getItem('token');
   //   axios
-  //     .get(`http://localhost:8000/api/v1/numbers`, { headers: { token } })
+  //     .get(`https://api.synergyrpa.com/api/v1/numbers`, { headers: { token } })
   //     .then((res) => {
   //       setWorkers(res.data.description.workers);
   //     })
