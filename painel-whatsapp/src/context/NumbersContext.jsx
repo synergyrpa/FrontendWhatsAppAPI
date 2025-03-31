@@ -5,13 +5,17 @@ const NumbersContext = createContext();
 
 export const NumbersProvider = ({ children }) => {
   const [numbers, setNumbers] = useState({ workers: [], admins: [] });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // true por padrão
   const [erro, setErro] = useState('');
 
   const fetchNumbers = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        setErro('Token não encontrado');
+        return;
+      }
       const res = await axios.get('https://api.synergyrpa.com/api/v1/numbers', {
         headers: { token },
       });
@@ -34,10 +38,10 @@ export const NumbersProvider = ({ children }) => {
         admins: numbers.admins,
         loading,
         erro,
-        refreshNumbers: fetchNumbers, // 👈 aqui!
+        refreshNumbers: fetchNumbers,
       }}
     >
-      {children}
+      {!loading ? children : <div className="text-center p-10 text-gray-600">Carregando números...</div>}
     </NumbersContext.Provider>
   );
 };
