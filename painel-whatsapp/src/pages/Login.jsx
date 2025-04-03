@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useNumbers } from '../context/NumbersContext';
+
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState('');
   const navigate = useNavigate();
+  const { refreshNumbers } = useNumbers();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -21,9 +24,10 @@ export default function Login() {
 
       const token = email;
       // const token = response.data.token;
-
+      
       if (token) {
         localStorage.setItem('token', token);
+        refreshNumbers();
         navigate('/dashboard');
       } else {
         setErro('Login inválido: token ausente');

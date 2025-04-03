@@ -5,6 +5,7 @@ import ManageNumbers from './pages/ManageNumbers';
 import QRCodePage from './pages/QRCodePage';
 import Reports from './pages/Reports';
 import PrivateRoute from './routes/PrivateRoute';
+import StatusPage from './pages/StatusPage';
 
 export default function App() {
   return (
@@ -32,6 +33,14 @@ export default function App() {
           element={
             <PrivateRoute>
               <QRCodePage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/status"
+          element={
+            <PrivateRoute>
+              <StatusPage />
             </PrivateRoute>
           }
         />

@@ -4,43 +4,38 @@ import DashboardLayout from '../layouts/DashboardLayout';
 import { useNumbers } from '../context/NumbersContext';
 
 export default function QRCodePage() {
-  const { workers, admins, numbersLoading, numbersErro } = useNumbers();
+  const { workers } = useNumbers();
   const [numeroSelecionado, setNumeroSelecionado] = useState('');
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [conectado, setConectado] = useState(false);
   const [erro, setErro] = useState('');
-  // const [numberStatus, setNumberStatus] = useState({});
-
 
   const loadStatusWorker = async (number) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`https://api.synergyrpa.com/api/v1/number-status?number=${number}`,{headers: {token: token}});
-      // setNumberStatus(res.data.description.status);
-      if (res.data.description.status === 'conectado') {
-        setConectado(true);
-      } else {
-        setConectado(false);
-      }
+      const res = await axios.get(`https://api.synergyrpa.com/api/v1/number-status?number=${number}`, {
+        headers: { token },
+      });
+
+      setConectado(res.data.description === 'conectado');
+      setErro('');
     } catch (err) {
-      setErro('Erro ao carregar os números');
+      setErro('Erro ao verificar o status do número');
     }
   };
 
-
+  // Dispara quando um número é selecionado
   useEffect(() => {
     if (!numeroSelecionado) return;
-    
-    // loadStatusWorker(numeroSelecionado);
-    // setErro('');
-    
-    // const urlBase = `https://users-wpp-websocket-context.s3.amazonaws.com/qrcodes/${numeroSelecionado}.png`;
-    // setQrCodeUrl(`${urlBase}?t=${Date.now()}`);
+
+    loadStatusWorker(numeroSelecionado); // checa status imediato
+
+    const urlBase = `https://users-wpp-websocket-context.s3.amazonaws.com/qrcodes/${numeroSelecionado}.png`;
+    setQrCodeUrl(`${urlBase}?t=${Date.now()}`);
 
     const interval = setInterval(() => {
-      // setQrCodeUrl(`${urlBase}?t=${Date.now()}`);
-      setErro('');
       loadStatusWorker(numeroSelecionado);
+      setQrCodeUrl(`${urlBase}?t=${Date.now()}`);
     }, 5000);
 
     return () => clearInterval(interval);
@@ -66,20 +61,14 @@ export default function QRCodePage() {
         </select>
       </div>
 
-      {qrCodeUrl && !conectado && (
+      {/* Mostrar QR Code apenas se estiver desconectado */}
+      {!conectado && qrCodeUrl && (
         <div className="mt-8 flex justify-center">
           <img
             src={qrCodeUrl}
             alt="QR Code"
             className="w-64 h-64 border rounded-lg shadow-lg"
-            onLoad={() => {
-              setConectado(false);
-              setErro('');
-            }}
-            onError={() => {
-              setErro('');
-              setConectado(true);
-            }}
+            onError={() => setErro('QR Code não encontrado ou expirado')}
           />
         </div>
       )}
@@ -91,9 +80,7 @@ export default function QRCodePage() {
       )}
 
       {erro && (
-        <p className="text-red-500 mt-4 text-center">
-          {erro}
-        </p>
+        <p className="text-red-500 mt-4 text-center">{erro}</p>
       )}
     </DashboardLayout>
   );

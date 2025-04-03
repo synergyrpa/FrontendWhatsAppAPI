@@ -9,6 +9,7 @@ const Sidebar = () => {
     { path: '/qrcode', label: 'QRCode' },
     { path: '/manage-numbers', label: 'Números' },
     { path: '/reports', label: 'Relatórios' },
+    { path: '/status', label: 'Status' },
   ];
 
   return (
