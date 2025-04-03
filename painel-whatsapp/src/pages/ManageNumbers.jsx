@@ -10,24 +10,6 @@ export default function ManageNumbers() {
   const [sucesso, setSucesso] = useState('');
   const token = localStorage.getItem('token');
   const [erro, setErro] = useState('');
-  
-  // const [workers, setWorkers] = useState([]);
-  // const [admins, setAdmins] = useState([]);
-  // const carregarNumeros = async () => {
-  //   try {
-  //     const response = await axios.get('https://api.synergyrpa.com/api/v1/numbers', {
-  //       headers: { token },
-  //     });
-  //     setWorkers(response.data.description.workers || []);
-  //     setAdmins(response.data.description.admins || []);
-  //   } catch {
-  //     setErro('Erro ao carregar os números');
-  //   }
-  // };
-
-  // useEffect(() => {
-  //   carregarNumeros();
-  // }, []);
 
   const handleAdicionar = async () => {
     setErro('');

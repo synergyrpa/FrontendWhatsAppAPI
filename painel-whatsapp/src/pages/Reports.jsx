@@ -23,17 +23,6 @@ export default function Reports() {
   const [numeroSelecionado, setNumeroSelecionado] = useState('');
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState('');
-  // const [workers, setWorkers] = useState([]);
-
-  // useEffect(() => {
-  //   const token = localStorage.getItem('token');
-  //   axios
-  //     .get(`https://api.synergyrpa.com/api/v1/numbers`, { headers: { token } })
-  //     .then((res) => {
-  //       setWorkers(res.data.description.workers);
-  //     })
-  //     .catch(() => setErro('Erro ao carregar números'));
-  // }, []);
 
   const buscarRelatorios = async () => {
     if (!numeroSelecionado) {

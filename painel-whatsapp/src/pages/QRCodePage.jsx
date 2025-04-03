@@ -9,31 +9,38 @@ export default function QRCodePage() {
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [conectado, setConectado] = useState(false);
   const [erro, setErro] = useState('');
-  
-  // const [workers, setWorkers] = useState([]);
-  // useEffect(() => {
-  //   const token = localStorage.getItem('token');
-  //   axios
-  //     .get(`https://api.synergyrpa.com/api/v1/numbers`, { headers: { token } })
-  //     .then((res) => {
-  //       setWorkers(res.data.description.workers);
-  //     })
-  //     .catch(() => setErro('Erro ao carregar números'));
-  // }, []);
+  // const [numberStatus, setNumberStatus] = useState({});
+
+
+  const loadStatusWorker = async (number) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`https://api.synergyrpa.com/api/v1/number-status?number=${number}`,{headers: {token: token}});
+      // setNumberStatus(res.data.description.status);
+      if (res.data.description.status === 'conectado') {
+        setConectado(true);
+      } else {
+        setConectado(false);
+      }
+    } catch (err) {
+      setErro('Erro ao carregar os números');
+    }
+  };
+
 
   useEffect(() => {
     if (!numeroSelecionado) return;
-
-    setErro('');
-    setConectado(false);
-
-    const urlBase = `https://users-wpp-websocket-context.s3.amazonaws.com/qrcodes/${numeroSelecionado}.png`;
-    setQrCodeUrl(`${urlBase}?t=${Date.now()}`);
+    
+    // loadStatusWorker(numeroSelecionado);
+    // setErro('');
+    
+    // const urlBase = `https://users-wpp-websocket-context.s3.amazonaws.com/qrcodes/${numeroSelecionado}.png`;
+    // setQrCodeUrl(`${urlBase}?t=${Date.now()}`);
 
     const interval = setInterval(() => {
-      setQrCodeUrl(`${urlBase}?t=${Date.now()}`);
+      // setQrCodeUrl(`${urlBase}?t=${Date.now()}`);
       setErro('');
-      setConectado(false);
+      loadStatusWorker(numeroSelecionado);
     }, 5000);
 
     return () => clearInterval(interval);
