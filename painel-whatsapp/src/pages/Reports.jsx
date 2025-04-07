@@ -65,7 +65,7 @@ export default function Reports() {
   
     relatorios.forEach((item) => {
       // Formatando data no padrão yyyy-mm-dd
-      const data = new Date(item.date_time_send).toLocaleDateString('sv-SE');
+      const data = new Date(item.date_time_queue).toLocaleDateString('sv-SE');
       agrupado[data] = (agrupado[data] || 0) + 1;
     });
   
