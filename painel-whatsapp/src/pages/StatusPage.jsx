@@ -18,7 +18,7 @@ export default function StatusPage() {
             headers: { token },
           });
           newStatus[number] = {
-            status: res.data.description,
+            status: res.data.description?.status,
             time: new Date().toLocaleString('pt-BR'),
           };
         } catch {
