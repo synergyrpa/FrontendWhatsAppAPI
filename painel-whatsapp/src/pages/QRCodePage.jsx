@@ -17,7 +17,7 @@ export default function QRCodePage() {
         headers: { token },
       });
 
-      setConectado(res.data.description === 'conectado');
+      setConectado(res.data.description.status === 'conectado');
       setErro('');
     } catch (err) {
       setErro('Erro ao verificar o status do número');
