@@ -10,6 +10,7 @@ export default function ManageNumbers() {
   const [sucesso, setSucesso] = useState('');
   const token = localStorage.getItem('token');
   const [erro, setErro] = useState('');
+  const WppApiEndpoint = import.meta.env.VITE_WPP_API_ENDPOINT
 
   const handleAdicionar = async () => {
     setErro('');
@@ -19,10 +20,10 @@ export default function ManageNumbers() {
       setErro('Informe o número com DDD e DDI');
       return;
     }
-
+    
     try {
       await axios.post(
-        'https://api.synergyrpa.com/api/v1/number',
+        `${WppApiEndpoint}/api/v1/number`,
         { number: novoNumero, role: tipoSelecionado },
         { headers: { token } }
       );
@@ -38,9 +39,9 @@ export default function ManageNumbers() {
   const handleRemover = async (number) => {
     setErro('');
     setSucesso('');
-
+    const WppApiEndpoint = import.meta.env.VITE_WPP_API_ENDPOINT
     try {
-      await axios.delete('https://api.synergyrpa.com/api/v1/number', {
+      await axios.delete(`${WppApiEndpoint}/api/v1/number`, {
         headers: { token },
         data: { number, role: tipoSelecionado },
       });

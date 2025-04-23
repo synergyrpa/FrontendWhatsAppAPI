@@ -14,9 +14,10 @@ export default function Login() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setErro('');
+    const WppApiEndpoint = import.meta.env.VITE_WPP_API_ENDPOINT
 
     try {
-      const response = await axios.post('https://api.synergyrpa.com/api/v1/login-user', {
+      const response = await axios.post(`${WppApiEndpoint}/api/v1/login-user`, {
         login: email,
         password: senha,
       });

@@ -12,8 +12,9 @@ export default function QRCodePage() {
 
   const loadStatusWorker = async (number) => {
     try {
+      const WppApiEndpoint = import.meta.env.VITE_WPP_API_ENDPOINT
       const token = localStorage.getItem('token');
-      const res = await axios.get(`https://api.synergyrpa.com/api/v1/number-status?number=${number}`, {
+      const res = await axios.get(`${WppApiEndpoint}/api/v1/number-status?number=${number}`, {
         headers: { token },
       });
 

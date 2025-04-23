@@ -11,24 +11,12 @@ export default function Workers() {
   const [sucesso, setSucesso] = useState('');
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState('');
-  
-  // const [workers, setWorkers] = useState([]);
-  // useEffect(() => {
-  //   // Carrega os números disponíveis
-  //   const token = localStorage.getItem('token');
-  //   axios.get(`https://api.synergyrpa.com/api/v1/numbers`,{headers: {token: token}})
-  //     .then((res) => {
-  //       setWorkers(res.data.description.workers)
-  //       console.log(res.data.description.workers);
-  //     })
-  //     .catch(() => setErro('Erro ao carregar números'));
-  //   console.log(workers);
-  // }, []);
+  const WppApiEndpoint = import.meta.env.VITE_WPP_API_ENDPOINT
 
   const carregarWorkers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`https://api.synergyrpa.com/api/v1/numbers`,{headers: {token: token}});
+      const res = await axios.get(`${WppApiEndpoint}/api/v1/numbers`,{headers: {token: token}});
       setWorkers(res.data.description.workers);
     } catch (err) {
       setErro('Erro ao carregar os números');

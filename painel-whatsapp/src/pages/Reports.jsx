@@ -9,11 +9,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { parse } from 'date-fns';
 import { useNumbers } from '../context/NumbersContext';
 
-const formatDateToYYYYMMDD = (dateStr) => {
-  const date = new Date(dateStr);
-  if (isNaN(date)) return '';
-  return date.toISOString().split('T')[0]; // yyyy-mm-dd
-};
+
 
 export default function Reports() {
   const { workers, admins, numbersLoading, numbersErro } = useNumbers();
@@ -32,10 +28,11 @@ export default function Reports() {
 
     setLoading(true);
     setErro('');
+    const WppApiEndpoint = import.meta.env.VITE_WPP_API_ENDPOINT
 
     try {
       console.log("Datas:",dataInicial, dataFinal);
-      const response = await axios.get('https://api.synergyrpa.com/api/v1/sends-report', {
+      const response = await axios.get(`${WppApiEndpoint}/api/v1/sends-report`, {
         headers: { token: localStorage.getItem('token') },
         params: {
           from_number: numeroSelecionado,

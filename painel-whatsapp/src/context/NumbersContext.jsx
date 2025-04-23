@@ -1,13 +1,15 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 
+
 const NumbersContext = createContext();
 
 export const NumbersProvider = ({ children }) => {
   const [numbers, setNumbers] = useState({ workers: [], admins: [] });
   const [loading, setLoading] = useState(true); // true por padrão
   const [erro, setErro] = useState('');
-
+  const WppApiEndpoint = import.meta.env.VITE_WPP_API_ENDPOINT
+  
   const fetchNumbers = async () => {
     setLoading(true);
     try {
@@ -16,7 +18,7 @@ export const NumbersProvider = ({ children }) => {
         setErro('Token não encontrado');
         return;
       }
-      const res = await axios.get('https://api.synergyrpa.com/api/v1/numbers', {
+      const res = await axios.get(`${WppApiEndpoint}/api/v1/numbers`, {
         headers: { token },
       });
       setNumbers(res.data.description);

@@ -3,6 +3,7 @@ import axios from 'axios';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { useNumbers } from '../context/NumbersContext';
 
+
 export default function StatusPage() {
   const { workers } = useNumbers();
   const [statusData, setStatusData] = useState({});
@@ -10,11 +11,11 @@ export default function StatusPage() {
   const fetchStatus = async () => {
     const token = localStorage.getItem('token');
     const newStatus = {};
-
+    const WppApiEndpoint = import.meta.env.VITE_WPP_API_ENDPOINT
     await Promise.all(
       workers.map(async (number) => {
         try {
-          const res = await axios.get(`https://api.synergyrpa.com/api/v1/number-status?number=${number}`, {
+          const res = await axios.get(`${WppApiEndpoint}/api/v1/number-status?number=${number}`, {
             headers: { token },
           });
           newStatus[number] = {
