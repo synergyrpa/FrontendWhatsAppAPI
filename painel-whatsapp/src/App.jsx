@@ -6,12 +6,18 @@ import QRCodePage from './pages/QRCodePage';
 import Reports from './pages/Reports';
 import PrivateRoute from './routes/PrivateRoute';
 import StatusPage from './pages/StatusPage';
+import Register from './pages/RegisterRequestOTP';
+import OTPVerification from './pages/LoginValidateOTP';
+import Home from './pages/Home';
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Login />} />
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/validate-otp" element={<OTPVerification />} />
         <Route
           path="/dashboard"
           element={

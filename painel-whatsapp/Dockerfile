@@ -1,4 +1,4 @@
-FROM node:20 AS build
+FROM node:20.15.0 AS build
 WORKDIR /app
 COPY . .
 RUN npm install --legacy-peer-deps

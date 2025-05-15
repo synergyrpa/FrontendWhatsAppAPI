@@ -8,8 +8,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { parse } from 'date-fns';
 import { useNumbers } from '../context/NumbersContext';
-
-
+import { FaFilter, FaFileExcel, FaChartBar, FaSearch, FaCalendarAlt, FaPhoneAlt } from 'react-icons/fa';
 
 export default function Reports() {
   const { workers, admins, numbersLoading, numbersErro } = useNumbers();
@@ -19,6 +18,11 @@ export default function Reports() {
   const [numeroSelecionado, setNumeroSelecionado] = useState('');
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState('');
+  const [animated, setAnimated] = useState(false);
+
+  useEffect(() => {
+    setAnimated(true);
+  }, []);
 
   const buscarRelatorios = async () => {
     if (!numeroSelecionado) {
@@ -31,7 +35,7 @@ export default function Reports() {
     const WppApiEndpoint = import.meta.env.VITE_WPP_API_ENDPOINT
 
     try {
-      console.log("Datas:",dataInicial, dataFinal);
+      console.log("Datas:", dataInicial, dataFinal);
       const response = await axios.get(`${WppApiEndpoint}/api/v1/sends-report`, {
         headers: { token: localStorage.getItem('token') },
         params: {
@@ -61,21 +65,82 @@ export default function Reports() {
     const agrupado = {};
   
     relatorios.forEach((item) => {
-      // Formatando data no padrão yyyy-mm-dd
       const data = new Date(item.date_time_queue).toLocaleDateString('sv-SE');
       agrupado[data] = (agrupado[data] || 0) + 1;
     });
   
-    // Ordenando as datas
     const categoriasOrdenadas = Object.keys(agrupado).sort();
     const valoresOrdenados = categoriasOrdenadas.map((data) => agrupado[data]);
   
     return {
       options: {
-        chart: { id: 'mensagens-por-dia', toolbar: { show: false } },
-        xaxis: { categories: categoriasOrdenadas },
-        title: { text: 'Mensagens por Dia', align: 'left' },
-        colors: ['#2563eb'],
+        chart: { 
+          id: 'mensagens-por-dia', 
+          toolbar: { show: false },
+          fontFamily: 'Inter, system-ui, sans-serif',
+          dropShadow: {
+            enabled: true,
+            opacity: 0.3,
+            blur: 5,
+            left: 0,
+            top: 0
+          },
+        },
+        xaxis: { 
+          categories: categoriasOrdenadas,
+          labels: {
+            style: {
+              fontFamily: 'Inter, system-ui, sans-serif',
+            }
+          }
+        },
+        title: { 
+          text: 'Mensagens por Dia', 
+          align: 'left',
+          style: {
+            fontSize: '18px',
+            fontWeight: 600,
+            fontFamily: 'Inter, system-ui, sans-serif',
+            color: '#1F2937'
+          }
+        },
+        colors: ['#3B82F6', '#4F46E5'],
+        fill: {
+          type: 'gradient',
+          gradient: {
+            shade: 'light',
+            type: "vertical",
+            shadeIntensity: 0.3,
+            opacityFrom: 0.8,
+            opacityTo: 0.9,
+            colorStops: [
+              {
+                offset: 0,
+                color: "#3B82F6",
+                opacity: 1
+              },
+              {
+                offset: 100,
+                color: "#4F46E5",
+                opacity: 1
+              }
+            ]
+          }
+        },
+        grid: {
+          borderColor: '#E5E7EB',
+          strokeDashArray: 4,
+        },
+        dataLabels: {
+          enabled: false
+        },
+        tooltip: {
+          theme: 'light',
+          style: {
+            fontSize: '14px',
+            fontFamily: 'Inter, system-ui, sans-serif'
+          }
+        }
       },
       series: [{ name: 'Mensagens', data: valoresOrdenados }],
     };
@@ -83,122 +148,188 @@ export default function Reports() {
 
   return (
     <DashboardLayout>
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">Relatórios</h1>
-
-      <div className="flex flex-wrap items-end gap-4 mb-6">
-        <div>
-          <label className="block text-sm mb-1 text-gray-600">Número</label>
-          <select
-            value={numeroSelecionado}
-            onChange={(e) => setNumeroSelecionado(e.target.value)}
-            className="p-2 border rounded min-w-[200px]"
-          >
-            <option value="">Selecione um número</option>
-            {workers.map((w) => (
-              <option key={w} value={w}>
-                {w}
-              </option>
-            ))}
-          </select>
+      <div className={`transition-all duration-500 ${animated ? 'opacity-100' : 'opacity-0'}`}>
+        <div className="flex items-center mb-6">
+          <div className="bg-gradient-to-r from-blue-500 to-indigo-600 w-12 h-12 rounded-lg flex items-center justify-center mr-4 shadow-lg">
+            <FaChartBar className="text-white text-xl" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-800">Relatórios</h1>
         </div>
 
-        <div>
-          <label className="block text-sm mb-1 text-gray-600">Data Inicial</label>
-          <DatePicker
-            selected={dataInicial ? parse(dataInicial, 'yyyy-MM-dd', new Date()) : null}
-            onChange={(date) => {
-              
-              const localISO = date.toLocaleDateString('sv-SE');
-              setDataInicial(localISO);
-            }}
-            dateFormat="yyyy-MM-dd"
-            placeholderText="Selecione uma data"
-            className="p-2 border rounded w-full"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm mb-1 text-gray-600">Data Final</label>
-          <DatePicker
-            selected={dataFinal ? parse(dataFinal, 'yyyy-MM-dd', new Date()) : null}
-            onChange={(date) => {
-              const localISO = date.toLocaleDateString('sv-SE');
-              setDataFinal(localISO);
-            }}
-            dateFormat="yyyy-MM-dd"
-            placeholderText="Selecione uma data"
-            className="p-2 border rounded w-full"
-          />
-        </div>
-
-        <button
-          onClick={buscarRelatorios}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-        >
-          Filtrar
-        </button>
-
-        {relatorios.length > 0 && (
-          <button
-            onClick={exportarExcel}
-            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-          >
-            Exportar Excel
-          </button>
-        )}
-      </div>
-
-      {loading && <p className="text-gray-600">Carregando relatórios...</p>}
-      {erro && <p className="text-red-500">{erro}</p>}
-
-      {relatorios.length > 0 && (
-        <div className="mb-10 bg-white p-6 rounded shadow">
-          <Chart
-            options={prepararDadosGrafico().options}
-            series={prepararDadosGrafico().series}
-            type="bar"
-            height={250}
-          />
-        </div>
-      )}
-
-      {!loading && relatorios.length > 0 && (
-        <div className="mt-10 bg-white p-6 rounded shadow">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Histórico de Envios</h2>
-          <div className="overflow-y-auto max-h-[300px] rounded border">
-            <table className="w-full table-auto text-sm text-gray-700">
-              <thead className="bg-blue-100 text-gray-800 text-xs sticky top-0 z-10">
-                <tr>
-                  <th className="px-3 py-2 text-left">Data Fila</th>
-                  <th className="px-3 py-2 text-left">Data Envio</th>
-                  <th className="px-3 py-2 text-left">De</th>
-                  <th className="px-3 py-2 text-left">Para</th>
-                  <th className="px-3 py-2 text-left">Tipo</th>
-                  <th className="px-3 py-2 text-left">Status</th>
-                  <th className="px-3 py-2 text-left">Mensagem</th>
-                </tr>
-              </thead>
-              <tbody>
-                {relatorios.map((item, i) => (
-                  <tr key={i} className="border-t hover:bg-gray-50">
-                    <td className="px-3 py-1">{item.date_time_queue || '-'}</td>
-                    <td className="px-3 py-1">{item.date_time_send || '-'}</td>
-                    <td className="px-3 py-1">{item.from_number}</td>
-                    <td className="px-3 py-1">{item.to_number}</td>
-                    <td className="px-3 py-1">{item.message_type}</td>
-                    <td className="px-3 py-1">{item.status}</td>
-                    <td className="px-3 py-1 break-words max-w-[300px]">{item.message}</td>
-                  </tr>
+        <div className="bg-white rounded-xl shadow-md p-6 mb-8 border border-gray-100">
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">Filtrar Relatórios</h2>
+          
+          <div className="flex flex-wrap items-end gap-4 mb-6">
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-sm mb-1 text-gray-600 font-medium">
+                <FaPhoneAlt className="inline mr-2 text-blue-500" /> Número
+              </label>
+              <select
+                value={numeroSelecionado}
+                onChange={(e) => setNumeroSelecionado(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+              >
+                <option value="">Selecione um número</option>
+                {workers.map((w) => (
+                  <option key={w} value={w}>
+                    {w}
+                  </option>
                 ))}
-              </tbody>
-            </table>
+              </select>
+            </div>
+
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-sm mb-1 text-gray-600 font-medium">
+                <FaCalendarAlt className="inline mr-2 text-blue-500" /> Data Inicial
+              </label>
+              <DatePicker
+                selected={dataInicial ? parse(dataInicial, 'yyyy-MM-dd', new Date()) : null}
+                onChange={(date) => {
+                  const localISO = date.toLocaleDateString('sv-SE');
+                  setDataInicial(localISO);
+                }}
+                dateFormat="yyyy-MM-dd"
+                placeholderText="Selecione uma data"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+              />
+            </div>
+
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-sm mb-1 text-gray-600 font-medium">
+                <FaCalendarAlt className="inline mr-2 text-blue-500" /> Data Final
+              </label>
+              <DatePicker
+                selected={dataFinal ? parse(dataFinal, 'yyyy-MM-dd', new Date()) : null}
+                onChange={(date) => {
+                  const localISO = date.toLocaleDateString('sv-SE');
+                  setDataFinal(localISO);
+                }}
+                dateFormat="yyyy-MM-dd"
+                placeholderText="Selecione uma data"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+              />
+            </div>
+
+            <button
+              onClick={buscarRelatorios}
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 py-3 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg flex items-center"
+            >
+              <FaSearch className="mr-2" /> Filtrar
+            </button>
+
+            {relatorios.length > 0 && (
+              <button
+                onClick={exportarExcel}
+                className="bg-gradient-to-r from-green-600 to-green-700 text-white px-5 py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all shadow-md hover:shadow-lg flex items-center"
+              >
+                <FaFileExcel className="mr-2" /> Exportar Excel
+              </button>
+            )}
           </div>
         </div>
-      )}
 
-      {!loading && relatorios.length === 0 && (
-        <p className="text-gray-500 mt-4">Nenhum relatório encontrado.</p>
-      )}
+        {loading && (
+          <div className="flex justify-center items-center p-8 bg-white rounded-xl shadow-md border border-gray-100">
+            <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-500 border-t-transparent"></div>
+            <p className="ml-3 text-gray-600 font-medium">Carregando relatórios...</p>
+          </div>
+        )}
+        
+        {erro && (
+          <div className="p-4 bg-red-50 text-red-600 rounded-lg border border-red-200 mb-6">
+            <p className="font-medium flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              {erro}
+            </p>
+          </div>
+        )}
+
+        {relatorios.length > 0 && (
+          <div className="mb-8 bg-white p-6 rounded-xl shadow-md border border-gray-100 transition-all duration-300 hover:shadow-lg">
+            <Chart
+              options={prepararDadosGrafico().options}
+              series={prepararDadosGrafico().series}
+              type="bar"
+              height={320}
+            />
+          </div>
+        )}
+
+        {!loading && relatorios.length > 0 && (
+          <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100 transition-all duration-300 hover:shadow-lg">
+            <div className="flex items-center mb-4">
+              <FaChartBar className="text-blue-500 mr-2" />
+              <h2 className="text-lg font-semibold text-gray-800">Histórico de Envios</h2>
+            </div>
+            <div className="overflow-hidden rounded-lg border border-gray-200">
+              <div className="overflow-y-auto max-h-[400px]">
+                <table className="w-full table-auto text-sm">
+                  <thead className="bg-gradient-to-r from-blue-50 to-indigo-50 text-gray-700 sticky top-0 z-10">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-semibold">Data Fila</th>
+                      <th className="px-4 py-3 text-left font-semibold">Data Envio</th>
+                      <th className="px-4 py-3 text-left font-semibold">De</th>
+                      <th className="px-4 py-3 text-left font-semibold">Para</th>
+                      <th className="px-4 py-3 text-left font-semibold">Tipo</th>
+                      <th className="px-4 py-3 text-left font-semibold">Status</th>
+                      <th className="px-4 py-3 text-left font-semibold">Mensagem</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {relatorios.map((item, i) => (
+                      <tr key={i} className="border-t hover:bg-blue-50/30 transition-colors">
+                        <td className="px-4 py-2 text-gray-700">{item.date_time_queue || '-'}</td>
+                        <td className="px-4 py-2 text-gray-700">{item.date_time_send || '-'}</td>
+                        <td className="px-4 py-2 text-gray-700">{item.from_number}</td>
+                        <td className="px-4 py-2 text-gray-700">{item.to_number}</td>
+                        <td className="px-4 py-2">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            item.message_type === 'text' ? 'bg-blue-100 text-blue-800' : 
+                            item.message_type === 'image' ? 'bg-purple-100 text-purple-800' : 
+                            item.message_type === 'video' ? 'bg-red-100 text-red-800' : 
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {item.message_type}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            item.status === 'sent' ? 'bg-green-100 text-green-800' : 
+                            item.status === 'delivered' ? 'bg-blue-100 text-blue-800' : 
+                            item.status === 'read' ? 'bg-indigo-100 text-indigo-800' : 
+                            item.status === 'failed' ? 'bg-red-100 text-red-800' : 
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {item.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 break-words max-w-[300px] text-gray-700">
+                          {item.message?.length > 50 ? `${item.message.substring(0, 50)}...` : item.message}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div className="text-right mt-4 text-sm text-gray-500">
+              Total de registros: {relatorios.length}
+            </div>
+          </div>
+        )}
+
+        {!loading && relatorios.length === 0 && (
+          <div className="flex flex-col items-center justify-center bg-white p-12 rounded-xl shadow-md border border-gray-100">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <p className="text-gray-500 text-lg">Nenhum relatório encontrado.</p>
+            <p className="text-gray-400 mt-2">Selecione um número e intervalo de datas para visualizar os dados.</p>
+          </div>
+        )}
+      </div>
     </DashboardLayout>
   );
 }
