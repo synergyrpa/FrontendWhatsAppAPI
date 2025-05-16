@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { 
   FaWhatsapp, FaUsers, FaChartLine, FaBell, 
   FaCheckCircle, FaExclamationTriangle, FaCalendarAlt,
-  FaEnvelope, FaPhoneAlt, FaPaperPlane, FaDatabase
+  FaEnvelope, FaPhoneAlt, FaPaperPlane, FaDatabase,
+  FaHourglassHalf, FaTimes
 } from 'react-icons/fa';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { useNumbers } from '../context/NumbersContext';
@@ -18,6 +19,7 @@ export default function Dashboard() {
     totalMessages: 0,
     messagesDelivered: 0,
     messagesFailed: 0,
+    messagesPending: 0,
     activeContacts: 0,
     activeSessions: 0,
     recentActivity: []
@@ -57,14 +59,21 @@ export default function Dashboard() {
         const dados = response.data.description || [];
         setRelatorios(dados);
         
-        // Contar estatísticas
-        const entregues = dados.filter(item => 
-          item.status === 'sent' || item.status === 'delivered' || item.status === 'read'
-        ).length;
+        // Contar estatísticas com status em português
+        const entregues = dados.filter(item => {
+          const status = item.status ? item.status.toLowerCase() : '';
+          return status === 'enviado';
+        }).length;
         
-        const falhas = dados.filter(item => 
-          item.status === 'failed' || item.status === 'error'
-        ).length;
+        const falhas = dados.filter(item => {
+          const status = item.status ? item.status.toLowerCase() : '';
+          return status === 'falha';
+        }).length;
+        
+        const naFila = dados.filter(item => {
+          const status = item.status ? item.status.toLowerCase() : '';
+          return status === 'na fila';
+        }).length;
         
         // Obter números de destino únicos para contar contatos
         const contatosUnicos = [...new Set(dados.map(item => item.to_number))].length;
@@ -74,12 +83,13 @@ export default function Dashboard() {
           totalMessages: dados.length,
           messagesDelivered: entregues,
           messagesFailed: falhas,
+          messagesPending: naFila,
           activeContacts: contatosUnicos,
           activeSessions: workers.length,
           recentActivity: dados.slice(0, 5).map((item, id) => ({
             id,
             type: item.message_type || 'message',
-            status: item.status || 'pending',
+            status: item.status || 'na fila',
             number: item.to_number,
             time: new Date(item.date_time_send || item.date_time_queue).toLocaleTimeString('pt-BR', {
               hour: '2-digit',
@@ -97,10 +107,22 @@ export default function Dashboard() {
     }
   };
   
-  // Cálculo da taxa de sucesso de entregas (%)
-  const deliverySuccessRate = dashboardData.totalMessages > 0 
-    ? Math.round((dashboardData.messagesDelivered / dashboardData.totalMessages) * 100) 
-    : 0;
+  // Cálculo das taxas usando useMemo
+  const taxas = useMemo(() => {
+    if (dashboardData.totalMessages === 0) {
+      return {
+        enviado: 0,
+        naFila: 0,
+        falha: 0
+      };
+    }
+    
+    return {
+      enviado: Math.round((dashboardData.messagesDelivered / dashboardData.totalMessages) * 100),
+      naFila: Math.round((dashboardData.messagesPending / dashboardData.totalMessages) * 100),
+      falha: Math.round((dashboardData.messagesFailed / dashboardData.totalMessages) * 100)
+    };
+  }, [dashboardData]);
   
   // Preparar dados para o gráfico de mensagens por dia
   const prepararDadosGrafico = () => {
@@ -231,7 +253,7 @@ export default function Dashboard() {
           </div>
         )}
         
-        {/* Cartões de estatísticas */}
+        {/* Cartões de estatísticas - Agora com 3 cartões para as taxas */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100 hover:shadow-lg transition-shadow">
             <div className="flex items-center justify-between mb-4">
@@ -252,9 +274,10 @@ export default function Dashboard() {
             <p className="text-sm text-gray-500 mt-1">Últimos 30 dias</p>
           </div>
           
+          {/* Taxa de Envio */}
           <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100 hover:shadow-lg transition-shadow">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-700">Taxa de Entrega</h2>
+              <h2 className="text-lg font-semibold text-gray-700">Taxa de Envio</h2>
               <div className="bg-green-100 p-2 rounded-lg">
                 <FaCheckCircle className="text-green-600 text-xl" />
               </div>
@@ -264,20 +287,105 @@ export default function Dashboard() {
                 <div className="animate-pulse h-8 w-16 bg-gray-200 rounded"></div>
               ) : (
                 <span className="text-3xl font-bold text-gray-800">
-                  {deliverySuccessRate}%
+                  {taxas.enviado}%
                 </span>
               )}
+              <span className="text-sm text-green-600 ml-2 mb-1">Enviadas</span>
             </div>
             {!loading && (
               <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
                 <div 
-                  className={`h-2 rounded-full ${deliverySuccessRate > 80 ? 'bg-green-500' : deliverySuccessRate > 60 ? 'bg-yellow-500' : 'bg-red-500'}`} 
-                  style={{ width: `${deliverySuccessRate}%` }}
+                  className="h-2 rounded-full bg-green-500" 
+                  style={{ width: `${taxas.enviado}%` }}
                 ></div>
               </div>
             )}
           </div>
           
+          {/* Taxa de Fila - NOVO */}
+          <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100 hover:shadow-lg transition-shadow">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-700">Taxa de Espera</h2>
+              <div className="bg-yellow-100 p-2 rounded-lg">
+                <FaHourglassHalf className="text-yellow-600 text-xl" />
+              </div>
+            </div>
+            <div className="flex items-end">
+              {loading ? (
+                <div className="animate-pulse h-8 w-16 bg-gray-200 rounded"></div>
+              ) : (
+                <span className="text-3xl font-bold text-gray-800">
+                  {taxas.naFila}%
+                </span>
+              )}
+              <span className="text-sm text-yellow-600 ml-2 mb-1">Na fila</span>
+            </div>
+            {!loading && (
+              <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
+                <div 
+                  className="h-2 rounded-full bg-yellow-500" 
+                  style={{ width: `${taxas.naFila}%` }}
+                ></div>
+              </div>
+            )}
+          </div>
+          
+          {/* Taxa de Falha - NOVO */}
+          <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100 hover:shadow-lg transition-shadow">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-700">Taxa de Falha</h2>
+              <div className="bg-red-100 p-2 rounded-lg">
+                <FaTimes className="text-red-600 text-xl" />
+              </div>
+            </div>
+            <div className="flex items-end">
+              {loading ? (
+                <div className="animate-pulse h-8 w-16 bg-gray-200 rounded"></div>
+              ) : (
+                <span className="text-3xl font-bold text-gray-800">
+                  {taxas.falha}%
+                </span>
+              )}
+              <span className="text-sm text-red-600 ml-2 mb-1">Falhas</span>
+            </div>
+            {!loading && (
+              <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
+                <div 
+                  className="h-2 rounded-full bg-red-500" 
+                  style={{ width: `${taxas.falha}%` }}
+                ></div>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {/* Gráfico de mensagens por dia - Usando espaço total agora */}
+        <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100 hover:shadow-lg transition-shadow mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-semibold text-gray-700">Mensagens enviadas (últimos 7 dias)</h2>
+          </div>
+          
+          {loading ? (
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div>
+            </div>
+          ) : relatorios.length > 0 ? (
+            <Chart
+              options={prepararDadosGrafico().options}
+              series={prepararDadosGrafico().series}
+              type="bar"
+              height={300}
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+              <FaChartLine className="text-gray-300 text-5xl mb-4" />
+              <p>Nenhum dado disponível para o período selecionado</p>
+            </div>
+          )}
+        </div>
+        
+        {/* Contatos e Sessões - Movidos para uma linha separada */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100 hover:shadow-lg transition-shadow">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-700">Contatos Ativos</h2>
@@ -300,8 +408,8 @@ export default function Dashboard() {
           <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100 hover:shadow-lg transition-shadow">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-700">Sessões Ativas</h2>
-              <div className="bg-yellow-100 p-2 rounded-lg">
-                <FaPhoneAlt className="text-yellow-600 text-xl" />
+              <div className="bg-blue-100 p-2 rounded-lg">
+                <FaPhoneAlt className="text-blue-600 text-xl" />
               </div>
             </div>
             <div className="flex items-end">
@@ -329,31 +437,6 @@ export default function Dashboard() {
               </div>
             )}
           </div>
-        </div>
-        
-        {/* Gráfico de mensagens por dia */}
-        <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100 hover:shadow-lg transition-shadow mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-gray-700">Mensagens enviadas (últimos 7 dias)</h2>
-          </div>
-          
-          {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div>
-            </div>
-          ) : relatorios.length > 0 ? (
-            <Chart
-              options={prepararDadosGrafico().options}
-              series={prepararDadosGrafico().series}
-              type="bar"
-              height={300}
-            />
-          ) : (
-            <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-              <FaChartLine className="text-gray-300 text-5xl mb-4" />
-              <p>Nenhum dado disponível para o período selecionado</p>
-            </div>
-          )}
         </div>
         
         {/* Atividade recente */}
@@ -387,15 +470,15 @@ export default function Dashboard() {
               {dashboardData.recentActivity.map((activity) => (
                 <div key={activity.id} className="py-3 flex items-start">
                   <div className={`p-2 rounded-full flex-shrink-0 mr-3 ${
-                    activity.status === 'sent' || activity.status === 'delivered' || activity.status === 'read' ? 'bg-green-100' :
-                    activity.status === 'failed' || activity.status === 'error' ? 'bg-red-100' :
-                    activity.status === 'pending' ? 'bg-yellow-100' :
+                    activity.status.toLowerCase() === 'enviado' ? 'bg-green-100' :
+                    activity.status.toLowerCase() === 'falha' ? 'bg-red-100' :
+                    activity.status.toLowerCase() === 'na fila' ? 'bg-yellow-100' :
                     'bg-blue-100'
                   }`}>
                     <FaWhatsapp className={`text-lg ${
-                      activity.status === 'sent' || activity.status === 'delivered' || activity.status === 'read' ? 'text-green-600' :
-                      activity.status === 'failed' || activity.status === 'error' ? 'text-red-600' :
-                      activity.status === 'pending' ? 'text-yellow-600' :
+                      activity.status.toLowerCase() === 'enviado' ? 'text-green-600' :
+                      activity.status.toLowerCase() === 'falha' ? 'text-red-600' :
+                      activity.status.toLowerCase() === 'na fila' ? 'text-yellow-600' :
                       'text-blue-600'
                     }`} />
                   </div>
@@ -407,10 +490,9 @@ export default function Dashboard() {
                     <p className="text-sm text-gray-600 mt-1 truncate">{activity.message}</p>
                     <div className="mt-1">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                        activity.status === 'sent' ? 'bg-green-100 text-green-800' :
-                        activity.status === 'delivered' ? 'bg-blue-100 text-blue-800' :
-                        activity.status === 'read' ? 'bg-indigo-100 text-indigo-800' :
-                        activity.status === 'failed' || activity.status === 'error' ? 'bg-red-100 text-red-800' :
+                        activity.status.toLowerCase() === 'enviado' ? 'bg-green-100 text-green-800' :
+                        activity.status.toLowerCase() === 'falha' ? 'bg-red-100 text-red-800' :
+                        activity.status.toLowerCase() === 'na fila' ? 'bg-yellow-100 text-yellow-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
                         {activity.status}

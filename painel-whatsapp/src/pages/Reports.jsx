@@ -8,7 +8,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { parse } from 'date-fns';
 import { useNumbers } from '../context/NumbersContext';
-import { FaFilter, FaFileExcel, FaChartBar, FaSearch, FaCalendarAlt, FaPhoneAlt } from 'react-icons/fa';
+import { FaFilter, FaFileExcel, FaChartBar, FaSearch, FaCalendarAlt, FaPhoneAlt, FaExclamationCircle } from 'react-icons/fa';
 
 export default function Reports() {
   const { workers, admins, numbersLoading, numbersErro } = useNumbers();
@@ -19,6 +19,7 @@ export default function Reports() {
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState('');
   const [animated, setAnimated] = useState(false);
+  const [pesquisaRealizada, setPesquisaRealizada] = useState(false);
 
   useEffect(() => {
     setAnimated(true);
@@ -32,10 +33,10 @@ export default function Reports() {
 
     setLoading(true);
     setErro('');
+    setPesquisaRealizada(true);
     const WppApiEndpoint = import.meta.env.VITE_WPP_API_ENDPOINT
 
     try {
-      console.log("Datas:", dataInicial, dataFinal);
       const response = await axios.get(`${WppApiEndpoint}/api/v1/sends-report`, {
         headers: { token: localStorage.getItem('token') },
         params: {
@@ -44,9 +45,15 @@ export default function Reports() {
           end_time: dataFinal,
         },
       });
-      setRelatorios(response.data.description);
+      
+      if (response.data.description && Array.isArray(response.data.description)) {
+        setRelatorios(response.data.description);
+      } else {
+        setRelatorios([]);
+      }
     } catch (err) {
-      setErro('Erro ao buscar relatórios');
+      console.error('Erro ao buscar relatórios:', err);
+      setErro(err.response?.data?.description || 'Erro ao buscar relatórios');
     } finally {
       setLoading(false);
     }
@@ -146,6 +153,22 @@ export default function Reports() {
     };
   };
 
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      return dateString;
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className={`transition-all duration-500 ${animated ? 'opacity-100' : 'opacity-0'}`}>
@@ -212,9 +235,19 @@ export default function Reports() {
 
             <button
               onClick={buscarRelatorios}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 py-3 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg flex items-center"
+              disabled={loading}
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 py-3 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg flex items-center disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              <FaSearch className="mr-2" /> Filtrar
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
+                  <span>Carregando...</span>
+                </>
+              ) : (
+                <>
+                  <FaSearch className="mr-2" /> Filtrar
+                </>
+              )}
             </button>
 
             {relatorios.length > 0 && (
@@ -226,6 +259,19 @@ export default function Reports() {
               </button>
             )}
           </div>
+
+          {/* Resumo da filtragem */}
+          {pesquisaRealizada && !loading && (
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-800 flex items-center">
+              <FaFilter className="mr-2 text-blue-500" />
+              <span>
+                Filtro aplicado: {numeroSelecionado && `Número: ${numeroSelecionado}`}
+                {dataInicial && ` • De: ${dataInicial}`}
+                {dataFinal && ` • Até: ${dataFinal}`}
+                {(!dataInicial && !dataFinal) && ' • Todos os períodos'}
+              </span>
+            </div>
+          )}
         </div>
 
         {loading && (
@@ -280,8 +326,8 @@ export default function Reports() {
                   <tbody>
                     {relatorios.map((item, i) => (
                       <tr key={i} className="border-t hover:bg-blue-50/30 transition-colors">
-                        <td className="px-4 py-2 text-gray-700">{item.date_time_queue || '-'}</td>
-                        <td className="px-4 py-2 text-gray-700">{item.date_time_send || '-'}</td>
+                        <td className="px-4 py-2 text-gray-700">{formatDate(item.date_time_queue) || '-'}</td>
+                        <td className="px-4 py-2 text-gray-700">{formatDate(item.date_time_send) || '-'}</td>
                         <td className="px-4 py-2 text-gray-700">{item.from_number}</td>
                         <td className="px-4 py-2 text-gray-700">{item.to_number}</td>
                         <td className="px-4 py-2">
@@ -320,13 +366,42 @@ export default function Reports() {
           </div>
         )}
 
-        {!loading && relatorios.length === 0 && (
+        {!loading && pesquisaRealizada && relatorios.length === 0 && (
+          <div className="flex flex-col items-center justify-center bg-white p-12 rounded-xl shadow-md border border-gray-100">
+            <FaExclamationCircle className="h-16 w-16 text-yellow-400 mb-4" />
+            <h3 className="text-gray-800 text-xl font-medium mb-2">Nenhum resultado encontrado</h3>
+            <p className="text-gray-500 text-center max-w-md mb-2">
+              Não foram encontrados envios para o número {numeroSelecionado} no período selecionado.
+            </p>
+            <p className="text-gray-400 text-sm text-center">
+              {dataInicial && dataFinal 
+                ? `Período pesquisado: ${dataInicial} até ${dataFinal}`
+                : dataInicial 
+                  ? `A partir de: ${dataInicial}` 
+                  : dataFinal 
+                    ? `Até: ${dataFinal}` 
+                    : 'Nenhum período específico selecionado'}
+            </p>
+            <button 
+              onClick={() => {
+                setDataInicial('');
+                setDataFinal('');
+              }}
+              className="mt-6 px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors flex items-center"
+            >
+              <FaCalendarAlt className="mr-2" />
+              Limpar datas e tentar novamente
+            </button>
+          </div>
+        )}
+
+        {!loading && !pesquisaRealizada && (
           <div className="flex flex-col items-center justify-center bg-white p-12 rounded-xl shadow-md border border-gray-100">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <p className="text-gray-500 text-lg">Nenhum relatório encontrado.</p>
-            <p className="text-gray-400 mt-2">Selecione um número e intervalo de datas para visualizar os dados.</p>
+            <p className="text-gray-500 text-lg">Selecione os filtros para começar</p>
+            <p className="text-gray-400 mt-2">Escolha um número e intervalo de datas para visualizar os relatórios.</p>
           </div>
         )}
       </div>

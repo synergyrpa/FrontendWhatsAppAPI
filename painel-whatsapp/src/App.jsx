@@ -9,6 +9,7 @@ import StatusPage from './pages/StatusPage';
 import Register from './pages/RegisterRequestOTP';
 import OTPVerification from './pages/LoginValidateOTP';
 import Home from './pages/Home';
+import SendMessages from './pages/SendMessages';
 
 export default function App() {
   return (
@@ -55,6 +56,14 @@ export default function App() {
           element={
             <PrivateRoute>
               <Reports />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/send-messages"
+          element={
+            <PrivateRoute>
+              <SendMessages />
             </PrivateRoute>
           }
         />

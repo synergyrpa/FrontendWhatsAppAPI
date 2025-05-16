@@ -8,7 +8,8 @@ import {
   FaChartBar, 
   FaWifi, 
   FaWhatsapp,
-  FaChevronRight
+  FaChevronRight,
+  FaPaperPlane
 } from 'react-icons/fa';
 
 const Sidebar = ({ onCollapse }) => {
@@ -24,6 +25,7 @@ const Sidebar = ({ onCollapse }) => {
 
   const links = [
     { path: '/dashboard', label: 'Dashboard', icon: <FaHome /> },
+    { path: '/send-messages', label: 'Enviar Mensagens', icon: <FaPaperPlane /> },
     { path: '/qrcode', label: 'QRCode', icon: <FaQrcode /> },
     { path: '/manage-numbers', label: 'Números', icon: <FaMobile /> },
     { path: '/reports', label: 'Relatórios', icon: <FaChartBar /> },
