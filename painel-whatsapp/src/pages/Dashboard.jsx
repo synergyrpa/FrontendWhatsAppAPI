@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import apiClient from '../utils/apiClient';
 import { 
   FaWhatsapp, FaUsers, FaChartLine, FaBell, 
   FaCheckCircle, FaExclamationTriangle, FaCalendarAlt,
@@ -9,11 +9,12 @@ import {
 } from 'react-icons/fa';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { useNumbers } from '../context/NumbersContext';
+import { isAuthenticated, getTokenInfo } from '../utils/auth';
 import Chart from 'react-apexcharts';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { workers } = useNumbers();
+  const { workers, loading: numbersLoading, erro: numbersErro } = useNumbers();
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState({
     totalMessages: 0,
@@ -28,6 +29,16 @@ export default function Dashboard() {
   const [erro, setErro] = useState('');
   const [animated, setAnimated] = useState(false);
 
+  // Debug: Verificar estado da autenticação e workers
+  useEffect(() => {
+    console.log('🔍 Dashboard Debug:');
+    console.log('- Autenticado:', isAuthenticated());
+    console.log('- Token Info:', getTokenInfo());
+    console.log('- Workers:', workers);
+    console.log('- Numbers Loading:', numbersLoading);
+    console.log('- Numbers Erro:', numbersErro);
+  }, [workers, numbersLoading, numbersErro]);
+
   useEffect(() => {
     setAnimated(true);
     buscarDadosDashboard();
@@ -36,19 +47,23 @@ export default function Dashboard() {
   const buscarDadosDashboard = async () => {
     setLoading(true);
     setErro('');
-    const WppApiEndpoint = import.meta.env.VITE_WPP_API_ENDPOINT;
-
+    
+    console.log('🎯 Dashboard: Iniciando busca de dados...');
+    console.log('📱 Workers disponíveis:', workers);
+    
     // Definir datas para os últimos 30 dias
     const dataFinal = new Date().toLocaleDateString('sv-SE');
     const dataInicial = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toLocaleDateString('sv-SE');
+    
+    console.log('📅 Período de consulta:', { dataInicial, dataFinal });
     
     try {
       // Se temos pelo menos um número de WhatsApp para consultar
       if (workers && workers.length > 0) {
         const numeroSelecionado = workers[0];
+        console.log('📊 Dashboard: Buscando relatórios para número:', numeroSelecionado);
         
-        const response = await axios.get(`${WppApiEndpoint}/api/v1/sends-report`, {
-          headers: { token: localStorage.getItem('token') },
+        const response = await apiClient.get('/api/v1/sends-report', {
           params: {
             from_number: numeroSelecionado,
             init_time: dataInicial,
@@ -56,7 +71,9 @@ export default function Dashboard() {
           },
         });
         
+        console.log('📊 Resposta completa da API:', response);
         const dados = response.data.description || [];
+        console.log('✅ Dashboard: Dados carregados:', dados.length, 'registros');
         setRelatorios(dados);
         
         // Contar estatísticas com status em português

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import Sidebar from '../components/Sidebar';
-import axios from 'axios';
 import { useNumbers } from '../context/NumbersContext';
+import { apiClient } from '../utils/apiClient';
 
 export default function Workers() {
   const { workers, admins, numbersLoading, numbersErro } = useNumbers();
@@ -15,10 +15,10 @@ export default function Workers() {
 
   const carregarWorkers = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await axios.get(`${WppApiEndpoint}/api/v1/numbers`,{headers: {token: token}});
+      const res = await apiClient.get('/api/v1/numbers');
       setWorkers(res.data.description.workers);
     } catch (err) {
+      console.error('Erro ao carregar os números:', err);
       setErro('Erro ao carregar os números');
     }
   };

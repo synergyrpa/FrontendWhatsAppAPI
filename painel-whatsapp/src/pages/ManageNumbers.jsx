@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { useNumbers } from '../context/NumbersContext';
 import { FaMobile, FaUserCog, FaPlus, FaTrash, FaTimes, FaCheck, FaUndo, FaPhoneAlt } from 'react-icons/fa';
+import { apiClient } from '../utils/apiClient';
 
 export default function ManageNumbers() {
   const { workers, admins, refreshNumbers } = useNumbers();
@@ -13,7 +13,6 @@ export default function ManageNumbers() {
   const [removalLoading, setRemovalLoading] = useState({});
   const [erro, setErro] = useState('');
   const [animated, setAnimated] = useState(false);
-  const token = localStorage.getItem('token');
   const WppApiEndpoint = import.meta.env.VITE_WPP_API_ENDPOINT;
 
   useEffect(() => {
@@ -37,11 +36,10 @@ export default function ManageNumbers() {
     
     setLoading(true);
     try {
-      await axios.post(
-        `${WppApiEndpoint}/api/v1/number`,
-        { number: novoNumero, role: tipoSelecionado },
-        { headers: { token } }
-      );
+      await apiClient.post('/api/v1/number', { 
+        number: novoNumero, 
+        role: tipoSelecionado 
+      });
       setSucesso(`Número ${novoNumero} adicionado com sucesso!`);
       setNovoNumero('');
       refreshNumbers();
@@ -59,9 +57,8 @@ export default function ManageNumbers() {
     setRemovalLoading(prev => ({ ...prev, [number]: true }));
     
     try {
-      await axios.delete(`${WppApiEndpoint}/api/v1/number`, {
-        headers: { token },
-        data: { number, role: tipoSelecionado },
+      await apiClient.delete('/api/v1/number', {
+        data: { number, role: tipoSelecionado }
       });
       setSucesso(`Número ${number} removido com sucesso!`);
       refreshNumbers();

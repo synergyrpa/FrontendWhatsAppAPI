@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import apiClient from '../utils/apiClient';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { useNumbers } from '../context/NumbersContext';
 import { FaWifi, FaSync, FaMobile, FaCircle, FaExclamationTriangle, FaClock, FaPhoneAlt } from 'react-icons/fa';
@@ -15,16 +15,17 @@ export default function StatusPage() {
   const fetchStatus = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
       const newStatus = {};
-      const WppApiEndpoint = import.meta.env.VITE_WPP_API_ENDPOINT;
+      
+      console.log('📊 StatusPage: Buscando status para números:', workers);
       
       await Promise.all(
         workers.map(async (number) => {
           try {
-            const res = await axios.get(`${WppApiEndpoint}/api/v1/number-status?number=${number}`, {
-              headers: { token },
+            const res = await apiClient.get('/api/v1/number-status', {
+              params: { number }
             });
+            
             newStatus[number] = {
               status: res.data.description?.status || 'desconhecido',
               qrCode: res.data.description?.qrCode,

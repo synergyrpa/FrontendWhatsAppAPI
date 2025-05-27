@@ -1,11 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import { FaSignOutAlt } from 'react-icons/fa';
+import { clearAuthData } from '../utils/auth';
 
 const LogoutButton = ({ collapsed = false }) => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    console.log('🚪 Fazendo logout...');
+    clearAuthData();
     navigate('/login');
   };
 

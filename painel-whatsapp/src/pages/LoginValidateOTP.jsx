@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { FaEnvelope, FaWhatsapp, FaShieldAlt, FaArrowRight, FaLock } from 'react-icons/fa';
+import { setAuthData, setUserEmail } from '../utils/auth';
 
 export default function ValidateOTP() {
   const [emailOTP, setEmailOTP] = useState('');
@@ -42,10 +43,39 @@ export default function ValidateOTP() {
       const response = await axios.post(`${WppApiEndpoint}/api/v1/validate-otp`, payload);
 
       if (response.data.success) {
+        console.log('✅ OTP validado com sucesso:', response.data);
+        
+        // Salvar o token de autenticação retornado pela API
+        const { token, expires_in } = response.data;
+        if (token && expires_in) {
+          console.log('💾 Salvando token de autenticação...');
+          const authSaved = setAuthData(token, expires_in);
+          
+          if (authSaved) {
+            // Salvar email do usuário se disponível
+            const userEmail = localStorage.getItem('pendingEmail');
+            if (userEmail) {
+              setUserEmail(userEmail);
+            }
+            
+            console.log('🎉 Autenticação salva com sucesso, redirecionando para dashboard...');
+          } else {
+            console.error('❌ Erro ao salvar dados de autenticação');
+            setErro('Erro interno ao salvar autenticação');
+            return;
+          }
+        } else {
+          console.error('❌ Token não encontrado na resposta da API:', response.data);
+          setErro('Erro interno: token não recebido');
+          return;
+        }
+        
+        // Limpar dados temporários
         localStorage.removeItem('pendingEmail');
         if (!isLogin) {
           localStorage.removeItem('pendingPhone');
         }
+        
         navigate('/dashboard');
       } else {
         setErro('Verificação inválida: Códigos incorretos');

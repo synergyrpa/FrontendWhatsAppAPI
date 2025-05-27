@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { setAuthData, setUserEmail } from '../utils/auth';
 
 export default function ValidateOTP() {
   const [emailOTP, setEmailOTP] = useState('');

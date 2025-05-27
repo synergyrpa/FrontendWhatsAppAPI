@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import axios from 'axios';
+import apiClient from '../utils/apiClient';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { useNumbers } from '../context/NumbersContext';
 import { FaQrcode, FaSync, FaCheck, FaExclamationTriangle, FaMobile, FaWhatsapp } from 'react-icons/fa';
@@ -32,14 +32,14 @@ export default function QRCodePage() {
     
     setLoading(true);
     try {
-      const WppApiEndpoint = import.meta.env.VITE_WPP_API_ENDPOINT;
-      const token = localStorage.getItem('token');
-      const res = await axios.get(`${WppApiEndpoint}/api/v1/number-status?number=${number}`, {
-        headers: { token },
+      console.log('📱 QRCode: Verificando status para número:', number);
+      const res = await apiClient.get('/api/v1/number-status', {
+        params: { number }
       });
 
       setConectado(res.data.description.status === 'conectado');
       setErro('');
+      console.log('✅ QRCode: Status carregado:', res.data.description.status);
     } catch (err) {
       console.error('Erro ao verificar status:', err);
       setErro('Erro ao verificar o status do número');

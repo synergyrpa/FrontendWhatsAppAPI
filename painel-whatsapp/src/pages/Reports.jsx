@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import apiClient from '../utils/apiClient';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import Chart from 'react-apexcharts';
@@ -34,11 +34,10 @@ export default function Reports() {
     setLoading(true);
     setErro('');
     setPesquisaRealizada(true);
-    const WppApiEndpoint = import.meta.env.VITE_WPP_API_ENDPOINT
 
     try {
-      const response = await axios.get(`${WppApiEndpoint}/api/v1/sends-report`, {
-        headers: { token: localStorage.getItem('token') },
+      console.log('🔍 Reports: Buscando relatórios para:', numeroSelecionado);
+      const response = await apiClient.get('/api/v1/sends-report', {
         params: {
           from_number: numeroSelecionado,
           init_time: dataInicial,
@@ -46,6 +45,7 @@ export default function Reports() {
         },
       });
       
+      console.log('✅ Reports: Relatórios carregados:', response.data);
       if (response.data.description && Array.isArray(response.data.description)) {
         setRelatorios(response.data.description);
       } else {

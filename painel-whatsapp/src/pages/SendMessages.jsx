@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { useNumbers } from '../context/NumbersContext';
+import { apiClient } from '../utils/apiClient';
 import { 
   FaPaperPlane, 
   FaUpload, 
@@ -219,13 +219,12 @@ export default function SendMessages() {
     }
 
     setLoading(true);
-    const token = localStorage.getItem('token');
     const WppApiEndpoint = import.meta.env.VITE_WPP_API_ENDPOINT;
 
     try {
       if (sendMode === 'individual') {
         // Envio individual
-        await sendSingleMessage(fromNumber, toNumber, message, messageType, file, token, WppApiEndpoint);
+        await sendSingleMessage(fromNumber, toNumber, message, messageType, file, WppApiEndpoint);
         setSuccess('Mensagem enviada com sucesso!');
         
         // Limpar campos depois do envio
@@ -236,7 +235,7 @@ export default function SendMessages() {
         setPreviewUrl('');
       } else {
         // Envio em massa
-        await sendBulkMessages(fromNumber, bulkNumbers, message, messageType, file, token, WppApiEndpoint);
+        await sendBulkMessages(fromNumber, bulkNumbers, message, messageType, file, WppApiEndpoint);
       }
     } catch (err) {
       console.error('Erro ao enviar mensagem:', err);
@@ -248,33 +247,41 @@ export default function SendMessages() {
     }
   };
 
-  const sendSingleMessage = async (from, to, text, type, fileData, token, apiEndpoint) => {
-    const formData = new FormData();
-    formData.append('from_number', from);
-    formData.append('to_number', to);
-    
+  const sendSingleMessage = async (from, to, text, type, fileData, apiEndpoint) => {
     if (type === 'text') {
-      formData.append('message', text);
+      // Para mensagens de texto, usar JSON
+      const payload = {
+        from_number: from,
+        to_number: to,
+        content: text
+      };
+      
+      await apiClient.post(`/api/v1/send-${type}`, payload);
     } else {
+      // Para arquivos, usar FormData
+      const formData = new FormData();
+      formData.append('from_number', from);
+      formData.append('to_number', to);
+      
       if (fileData) {
         formData.append('file', fileData);
         formData.append('caption', text || ''); // Legenda opcional
       }
-    }
-    
-    await axios.post(
-      `${apiEndpoint}/api/v1/send-${type}`,
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          token
+      
+      await apiClient.post(
+        `/api/v1/send/${type}`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'Token': 'bearer_token'
+          }
         }
-      }
-    );
+      );
+    }
   };
 
-  const sendBulkMessages = async (from, numbers, text, type, fileData, token, apiEndpoint) => {
+  const sendBulkMessages = async (from, numbers, text, type, fileData, apiEndpoint) => {
     setIsSending(true);
     setTotalSent(0);
     let successful = 0;
@@ -285,7 +292,7 @@ export default function SendMessages() {
         if (!isSending) break; // Permite cancelar o envio
         
         try {
-          await sendSingleMessage(from, numbers[i], text, type, fileData, token, apiEndpoint);
+          await sendSingleMessage(from, numbers[i], text, type, fileData, apiEndpoint);
           successful++;
         } catch (err) {
           console.error(`Erro ao enviar para ${numbers[i]}:`, err);

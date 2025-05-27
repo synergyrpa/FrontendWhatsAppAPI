@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import LogoutButton from './LogoutButton';
+import { getUserEmail } from '../utils/auth';
 import { 
   FaHome, 
   FaQrcode, 
@@ -92,7 +93,7 @@ const Sidebar = ({ onCollapse }) => {
         {!collapsed && (
           <div className="mb-4">
             <p className="text-sm text-blue-300 mb-1">Usuário conectado</p>
-            <p className="text-white font-medium truncate">{localStorage.getItem('token') || 'usuário@exemplo.com'}</p>
+            <p className="text-white font-medium truncate">{getUserEmail() || 'usuário@exemplo.com'}</p>
           </div>
         )}
         <LogoutButton collapsed={collapsed} />
