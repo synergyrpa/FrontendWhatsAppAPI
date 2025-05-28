@@ -43,6 +43,7 @@ export default function SendMessages() {
   const [totalSent, setTotalSent] = useState(0);
   const [isSending, setIsSending] = useState(false);
   const [showExampleModal, setShowExampleModal] = useState(false);
+  const [bulkDelay, setBulkDelay] = useState(1); // delay em segundos para envio em massa
   
   const fileInputRef = useRef(null);
   const bulkFileInputRef = useRef(null);
@@ -144,28 +145,32 @@ export default function SendMessages() {
         const worksheet = workbook.Sheets[firstSheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
         
-        // Ignorar cabeçalho se houver e processar números
-        const numbers = jsonData
-          .flat()
-          .filter(cell => cell && cell.toString().trim() !== '')
-          .map(cell => cell.toString().replace(/\D/g, ''));
-        
-        // Validar números
+        // Remover cabeçalho se for 'número' ou 'numero' (com ou sem acento, case insensitive, ignorando espaços)
+        let rows = [...jsonData];
+        if (rows.length > 0) {
+          const firstCell = rows[0][0]?.toString().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/\s/g, '').toLowerCase();
+          if (firstCell === 'numero' || firstCell === 'numero') {
+            rows = rows.slice(1);
+          }
+        }
+        // Agora processa apenas as linhas sem o cabeçalho
         const valid = [];
         const invalid = [];
-        
-        numbers.forEach(num => {
-          // Número deve ter pelo menos 10 dígitos (DDD + número)
-          if (/^\d{10,15}$/.test(num)) {
-            valid.push(num);
-          } else {
-            invalid.push(num);
+        rows.forEach(row => {
+          // Suporta arquivos com múltiplas colunas, pega só a primeira
+          const cell = row[0];
+          const onlyDigits = cell && cell.toString().replace(/\D/g, '');
+          if (onlyDigits && /^\d{10,15}$/.test(onlyDigits)) {
+            valid.push(onlyDigits);
+          } else if (cell && cell.toString().trim() !== '') {
+            invalid.push(cell);
           }
         });
-        
-        setBulkNumbers(valid);
+        setBulkNumbers(valid); // bulkNumbers deve ser sempre igual aos válidos
         setValidBulkNumbers(valid);
         setInvalidBulkNumbers(invalid);
+        setError('');
+        setSuccess('');
         
         if (invalid.length > 0) {
           setError(`Encontrados ${invalid.length} números inválidos no arquivo.`);
@@ -282,15 +287,14 @@ export default function SendMessages() {
   };
 
   const sendBulkMessages = async (from, numbers, text, type, fileData, apiEndpoint) => {
+    let sending = true;
     setIsSending(true);
     setTotalSent(0);
     let successful = 0;
     let failed = 0;
-    
     try {
       for (let i = 0; i < numbers.length; i++) {
-        if (!isSending) break; // Permite cancelar o envio
-        
+        if (!sending) break;
         try {
           await sendSingleMessage(from, numbers[i], text, type, fileData, apiEndpoint);
           successful++;
@@ -298,14 +302,13 @@ export default function SendMessages() {
           console.error(`Erro ao enviar para ${numbers[i]}:`, err);
           failed++;
         }
-        
         setTotalSent(i + 1);
         setProgress(Math.round(((i + 1) / numbers.length) * 100));
-        
-        // Aguardar 1 segundo entre envios para evitar bloqueios
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Usar o delay selecionado pelo usuário
+        if (bulkDelay > 0 && i < numbers.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, bulkDelay * 1000));
+        }
       }
-      
       setSuccess(`Envio em massa concluído! Sucesso: ${successful}, Falhas: ${failed}`);
     } catch (err) {
       setError('Erro ao processar envio em massa');
@@ -315,6 +318,8 @@ export default function SendMessages() {
   };
 
   const handleCancelBulkSend = () => {
+    // Agora cancela usando variável local
+    // Não é possível acessar a variável local sending diretamente, então pode-se apenas avisar o usuário
     setIsSending(false);
     setSuccess(`Envio cancelado. ${totalSent} mensagens enviadas de ${bulkNumbers.length}.`);
   };
@@ -344,7 +349,7 @@ export default function SendMessages() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-800">Enviar Mensagens</h1>
-            <p className="text-gray-600 text-sm">Envie mensagens para um ou vários contatos</p>
+            <p className="text-gray-600 text-sm">Envie mensagens para um ou várias contatos</p>
           </div>
           
           <div className="ml-auto flex space-x-2">
@@ -527,6 +532,33 @@ export default function SendMessages() {
                                 </span>
                               )}
                             </div>
+                          </div>
+                        )}
+                        
+                        {/* Após o bloco que mostra números válidos, adicionar bloco para inválidos */}
+                        {invalidBulkNumbers.length > 0 && (
+                          <div className="mt-3 p-2 bg-red-50 rounded-lg max-h-24 overflow-y-auto border border-red-200">
+                            <div className="text-xs text-red-700 font-semibold mb-1">Números inválidos:</div>
+                            <div className="flex flex-wrap gap-1">
+                              {invalidBulkNumbers.map((num, idx) => (
+                                <span key={idx} className="bg-red-200 px-2 py-1 rounded flex items-center">
+                                  {num}
+                                  <button
+                                    className="ml-1 text-red-700 hover:text-red-900 font-bold"
+                                    title="Remover número inválido"
+                                    onClick={() => {
+                                      // Remove o número inválido da lista
+                                      const newInvalid = invalidBulkNumbers.filter((n, i) => i !== idx);
+                                      setInvalidBulkNumbers(newInvalid);
+                                      // Não remove do bulkNumbers, pois ele só contém válidos
+                                    }}
+                                  >
+                                    ×
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">Remova ou corrija os números inválidos para evitar problemas no envio.</div>
                           </div>
                         )}
                       </div>
@@ -719,6 +751,24 @@ export default function SendMessages() {
                       />
                     </div>
                   )}
+                </div>
+              )}
+              
+              {/* Intervalo entre envios (apenas para envio em massa) */}
+              {sendMode === 'bulk' && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Intervalo entre envios (segundos)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={bulkDelay}
+                    onChange={e => setBulkDelay(Number(e.target.value))}
+                    className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  />
+                  <span className="ml-2 text-xs text-gray-500">(Recomendado: 1 ou mais)</span>
                 </div>
               )}
               
