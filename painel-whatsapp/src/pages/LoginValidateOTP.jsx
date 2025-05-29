@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { FaEnvelope, FaWhatsapp, FaShieldAlt, FaArrowRight, FaLock } from 'react-icons/fa';
 import { setAuthData, setUserEmail } from '../utils/auth';
+import { useNumbers } from '../context/NumbersContext';
 
 export default function ValidateOTP() {
   const [emailOTP, setEmailOTP] = useState('');
@@ -13,6 +14,7 @@ export default function ValidateOTP() {
   const [animated, setAnimated] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { refreshNumbers } = useNumbers();
 
   useEffect(() => {
     // Check if we're coming from login or register
@@ -57,8 +59,9 @@ export default function ValidateOTP() {
             if (userEmail) {
               setUserEmail(userEmail);
             }
-            
-            console.log('🎉 Autenticação salva com sucesso, redirecionando para dashboard...');
+            // Forçar refresh dos números antes de navegar
+            await refreshNumbers?.();
+            console.log('🎉 Autenticação salva com sucesso, números atualizados, redirecionando para dashboard...');
           } else {
             console.error('❌ Erro ao salvar dados de autenticação');
             setErro('Erro interno ao salvar autenticação');

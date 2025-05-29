@@ -46,10 +46,35 @@ export const NumbersProvider = ({ children }) => {
     }
   };
 
+  // Permite aguardar até que o loading seja false (útil para páginas que dependem dos números)
+  const waitForNumbersLoaded = () => {
+    return new Promise(resolve => {
+      if (!loading) return resolve();
+      let waited = 0;
+      const interval = setInterval(() => {
+        if (!loading) {
+          clearInterval(interval);
+          resolve();
+        } else if (waited > 5000) { // timeout de segurança 5s
+          clearInterval(interval);
+          resolve();
+        }
+        waited += 50;
+      }, 50);
+    });
+  };
+
   useEffect(() => {
     console.log("NumbersContext useEffect running");
     fetchNumbers();
   }, []);
+
+  // Sempre que o usuário autenticar, tenta buscar os números
+  useEffect(() => {
+    if (isAuthenticated()) {
+      fetchNumbers();
+    }
+  }, [isAuthenticated()]);
 
   return (
     <NumbersContext.Provider
@@ -59,6 +84,7 @@ export const NumbersProvider = ({ children }) => {
         loading,
         erro,
         refreshNumbers: fetchNumbers,
+        waitForNumbersLoaded, // novo helper
       }}
     >
       {children}

@@ -14,7 +14,7 @@ import Chart from 'react-apexcharts';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { workers, loading: numbersLoading, erro: numbersErro } = useNumbers();
+  const { workers, loading: numbersLoading, erro: numbersErro, waitForNumbersLoaded } = useNumbers();
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState({
     totalMessages: 0,
@@ -28,6 +28,7 @@ export default function Dashboard() {
   const [relatorios, setRelatorios] = useState([]);
   const [erro, setErro] = useState('');
   const [animated, setAnimated] = useState(false);
+  const [selectedNumber, setSelectedNumber] = useState('');
 
   // Debug: Verificar estado da autenticação e workers
   useEffect(() => {
@@ -41,10 +42,22 @@ export default function Dashboard() {
 
   useEffect(() => {
     setAnimated(true);
-    buscarDadosDashboard();
-  }, [workers]);
+    // Aguarda os números serem carregados antes de buscar dados
+    (async () => {
+      await waitForNumbersLoaded?.();
+      if (workers && workers.length > 0) {
+        setSelectedNumber(workers[0]);
+      }
+    })();
+  }, [workers, waitForNumbersLoaded]);
 
-  const buscarDadosDashboard = async () => {
+  useEffect(() => {
+    if (selectedNumber) {
+      buscarDadosDashboard(selectedNumber);
+    }
+  }, [selectedNumber]);
+
+  const buscarDadosDashboard = async (numeroSelecionado) => {
     setLoading(true);
     setErro('');
     
@@ -58,9 +71,7 @@ export default function Dashboard() {
     console.log('📅 Período de consulta:', { dataInicial, dataFinal });
     
     try {
-      // Se temos pelo menos um número de WhatsApp para consultar
-      if (workers && workers.length > 0) {
-        const numeroSelecionado = workers[0];
+      if (workers && workers.length > 0 && numeroSelecionado) {
         console.log('📊 Dashboard: Buscando relatórios para número:', numeroSelecionado);
         
         const response = await apiClient.get('/api/v1/sends-report', {
@@ -243,7 +254,21 @@ export default function Dashboard() {
               })}
             </p>
           </div>
-          
+          {/* Seletor de número de WhatsApp */}
+          {workers && workers.length > 1 && (
+            <div className="flex flex-col items-end ml-4">
+              <label className="text-sm text-gray-600 mb-1">Número de WhatsApp</label>
+              <select
+                value={selectedNumber}
+                onChange={e => setSelectedNumber(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
+              >
+                {workers.map((number) => (
+                  <option key={number} value={number}>{number}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="flex space-x-2 mt-4 sm:mt-0">
             <button 
               onClick={() => navigate('/reports')}
@@ -253,7 +278,7 @@ export default function Dashboard() {
               Ver Relatórios
             </button>
             <button 
-              onClick={buscarDadosDashboard}
+              onClick={() => buscarDadosDashboard(selectedNumber)}
               className="flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700"
             >
               <FaDatabase className="mr-2 text-blue-500" />
