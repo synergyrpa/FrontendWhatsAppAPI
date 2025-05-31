@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import apiClient from '../utils/apiClient';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { useNumbers } from '../context/NumbersContext';
 import { FaWifi, FaSync, FaMobile, FaCircle, FaExclamationTriangle, FaClock, FaPhoneAlt } from 'react-icons/fa';
 
 export default function StatusPage() {
+  const navigate = useNavigate();
   const { workers } = useNumbers();
   const [statusData, setStatusData] = useState({});
   const [loading, setLoading] = useState(true);

@@ -88,6 +88,14 @@ export default function App() {
           }
         />
         <Route
+          path="/qrcode/:number"
+          element={
+            <PrivateRoute>
+              <QRCodePage />
+            </PrivateRoute>
+          }
+        />
+        <Route
           path="/status"
           element={
             <PrivateRoute>
