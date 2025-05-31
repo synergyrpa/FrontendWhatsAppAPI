@@ -35,15 +35,21 @@ export default function SendMessages() {
   const [error, setError] = useState('');
   const [animated, setAnimated] = useState(false);
   const [sendMode, setSendMode] = useState('individual');
+  const [bulkMode, setBulkMode] = useState('manual'); // 'manual' ou 'file'
   const [bulkNumbers, setBulkNumbers] = useState([]);
   const [validBulkNumbers, setValidBulkNumbers] = useState([]);
   const [invalidBulkNumbers, setInvalidBulkNumbers] = useState([]);
+  const [bulkData, setBulkData] = useState([]); // Array de objetos {number, message}
+  const [manualNumbersText, setManualNumbersText] = useState(''); // Texto para inserção manual
   const [bulkFile, setBulkFile] = useState(null);
   const [progress, setProgress] = useState(0);
   const [totalSent, setTotalSent] = useState(0);
   const [isSending, setIsSending] = useState(false);
   const [showExampleModal, setShowExampleModal] = useState(false);
   const [bulkDelay, setBulkDelay] = useState(1); // delay em segundos para envio em massa
+  const [showBulkTable, setShowBulkTable] = useState(false); // Controla exibição da tabela
+  const [editingCell, setEditingCell] = useState(null); // {index, field} para controlar edição
+  const [uploadSubMode, setUploadSubMode] = useState('single-message'); // 'single-message' ou 'personalized-messages'
   
   const fileInputRef = useRef(null);
   const bulkFileInputRef = useRef(null);
@@ -126,7 +132,7 @@ export default function SendMessages() {
         selectedFile.name.endsWith('.csv')) {
       
       setBulkFile(selectedFile);
-      processExcelFile(selectedFile);
+      processExcelFileWithPersonalization(selectedFile);
       setError('');
     } else {
       setBulkFile(null);
@@ -187,6 +193,192 @@ export default function SendMessages() {
     reader.readAsArrayBuffer(file);
   };
 
+  const processManualNumbers = (text) => {
+    if (!text.trim()) {
+      setBulkNumbers([]);
+      setValidBulkNumbers([]);
+      setInvalidBulkNumbers([]);
+      setBulkData([]);
+      return;
+    }
+
+    // Separar números por quebra de linha, vírgula ou ponto e vírgula
+    const rawNumbers = text.split(/[\n,;]+/).map(num => num.trim()).filter(num => num);
+    
+    const valid = [];
+    const invalid = [];
+    const bulkDataArray = [];
+    
+    rawNumbers.forEach(rawNumber => {
+      const onlyDigits = rawNumber.replace(/\D/g, '');
+      if (onlyDigits && /^\d{10,15}$/.test(onlyDigits)) {
+        valid.push(onlyDigits);
+        bulkDataArray.push({
+          number: onlyDigits,
+          message: null // Para inserção manual, todos usam a mesma mensagem
+        });
+      } else if (rawNumber.trim() !== '') {
+        invalid.push(rawNumber);
+      }
+    });
+    
+    setBulkNumbers(valid);
+    setValidBulkNumbers(valid);
+    setInvalidBulkNumbers(invalid);
+    setBulkData(bulkDataArray);
+    // Não mostrar tabela no modo manual
+    
+    if (invalid.length > 0) {
+      setError(`Encontrados ${invalid.length} números inválidos.`);
+    } else if (valid.length === 0) {
+      setError('Nenhum número válido encontrado.');
+    } else {
+      setSuccess(`${valid.length} números válidos adicionados!`);
+      setError('');
+    }
+  };
+
+  const processExcelFileWithPersonalization = (file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        
+        // Verificar se há cabeçalho e removê-lo
+        let rows = [...jsonData];
+        let hasPersonalizedMessages = false;
+        
+        if (rows.length > 0) {
+          const firstRow = rows[0];
+          const firstCell = firstRow[0]?.toString().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/\s/g, '').toLowerCase();
+          const secondCell = firstRow[1]?.toString().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/\s/g, '').toLowerCase();
+          
+          if (firstCell === 'numero') {
+            // Tem cabeçalho, verificar se há segunda coluna para mensagens
+            if (secondCell && (secondCell === 'mensagem' || secondCell === 'message')) {
+              hasPersonalizedMessages = true;
+            }
+            rows = rows.slice(1); // Remove o cabeçalho
+          }
+        }
+        
+        const valid = [];
+        const invalid = [];
+        const bulkDataArray = [];
+        
+        rows.forEach(row => {
+          const numberCell = row[0];
+          const messageCell = hasPersonalizedMessages ? row[1] : null;
+          const onlyDigits = numberCell && numberCell.toString().replace(/\D/g, '');
+          
+          if (onlyDigits && /^\d{10,15}$/.test(onlyDigits)) {
+            valid.push(onlyDigits);
+            bulkDataArray.push({
+              number: onlyDigits,
+              message: messageCell && messageCell.toString().trim() ? messageCell.toString() : null
+            });
+          } else if (numberCell && numberCell.toString().trim() !== '') {
+            invalid.push(numberCell);
+          }
+        });
+        
+        setBulkNumbers(valid);
+        setValidBulkNumbers(valid);
+        setInvalidBulkNumbers(invalid);
+        setBulkData(bulkDataArray);
+        setShowBulkTable(bulkDataArray.length > 0);
+        
+        // Detectar automaticamente o modo baseado no conteúdo
+        const personalizedCount = bulkDataArray.filter(item => item.message && item.message.trim()).length;
+        if (personalizedCount > 0) {
+          setUploadSubMode('personalized-messages');
+        } else {
+          setUploadSubMode('single-message');
+        }
+        
+        setError('');
+        setSuccess('');
+        
+        if (invalid.length > 0) {
+          setError(`Encontrados ${invalid.length} números inválidos no arquivo.`);
+        } else if (valid.length === 0) {
+          setError('Nenhum número válido encontrado no arquivo.');
+        } else {
+          const personalizedCount = bulkDataArray.filter(item => item.message).length;
+          let successMsg = `${valid.length} números carregados com sucesso!`;
+          if (personalizedCount > 0) {
+            successMsg += ` ${personalizedCount} mensagens personalizadas encontradas.`;
+          }
+          setSuccess(successMsg);
+        }
+      } catch (err) {
+        console.error('Erro ao processar arquivo:', err);
+        setError('Erro ao processar o arquivo. Verifique se o formato está correto.');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  // Funções para gerenciar a tabela editável
+  const handleCellEdit = (index, field, value) => {
+    const newBulkData = [...bulkData];
+    newBulkData[index][field] = value;
+    
+    // Se editando número, validar
+    if (field === 'number') {
+      const onlyDigits = value.replace(/\D/g, '');
+      newBulkData[index][field] = onlyDigits;
+      
+      // Atualizar listas de válidos/inválidos
+      const valid = [];
+      const invalid = [];
+      newBulkData.forEach((item, idx) => {
+        if (validatePhoneNumber(item.number)) {
+          valid.push(item.number);
+        } else {
+          invalid.push(item.number);
+        }
+      });
+      setBulkNumbers(valid);
+      setValidBulkNumbers(valid);
+      setInvalidBulkNumbers(invalid);
+    }
+    
+    setBulkData(newBulkData);
+  };
+
+  const handleRemoveRow = (index) => {
+    const newBulkData = bulkData.filter((_, i) => i !== index);
+    setBulkData(newBulkData);
+    
+    // Atualizar listas
+    const valid = [];
+    const invalid = [];
+    newBulkData.forEach((item) => {
+      if (validatePhoneNumber(item.number)) {
+        valid.push(item.number);
+      } else {
+        invalid.push(item.number);
+      }
+    });
+    setBulkNumbers(valid);
+    setValidBulkNumbers(valid);
+    setInvalidBulkNumbers(invalid);
+    
+    if (newBulkData.length === 0) {
+      setShowBulkTable(false);
+    }
+  };
+
+  const handleAddRow = () => {
+    const newBulkData = [...bulkData, { number: '', message: '' }];
+    setBulkData(newBulkData);
+  };
+
   const validatePhoneNumber = (number) => {
     // Número deve ter pelo menos 10 dígitos (DDD + número)
     return /^\d{10,15}$/.test(number);
@@ -213,9 +405,19 @@ export default function SendMessages() {
       return;
     }
 
-    if (!message && messageType === 'text') {
-      setError('Digite uma mensagem para enviar');
-      return;
+    // Para mensagens de texto, verificar se há mensagem padrão ou mensagens personalizadas
+    if (messageType === 'text') {
+      if (sendMode === 'individual' && !message) {
+        setError('Digite uma mensagem para enviar');
+        return;
+      }
+      if (sendMode === 'bulk') {
+        const hasPersonalizedMessages = bulkData.some(item => item.message);
+        if (!message && !hasPersonalizedMessages) {
+          setError('Digite uma mensagem padrão ou use um arquivo com mensagens personalizadas');
+          return;
+        }
+      }
     }
 
     if ((messageType === 'image' || messageType === 'video' || messageType === 'document') && !file) {
@@ -240,7 +442,7 @@ export default function SendMessages() {
         setPreviewUrl('');
       } else {
         // Envio em massa
-        await sendBulkMessages(fromNumber, bulkNumbers, message, messageType, file, WppApiEndpoint);
+        await sendBulkMessages(fromNumber, bulkData, message, messageType, file, WppApiEndpoint);
       }
     } catch (err) {
       console.error('Erro ao enviar mensagem:', err);
@@ -289,26 +491,29 @@ export default function SendMessages() {
     }
   };
 
-  const sendBulkMessages = async (from, numbers, text, type, fileData, apiEndpoint) => {
+  const sendBulkMessages = async (from, bulkDataArray, fallbackText, type, fileData, apiEndpoint) => {
     let sending = true;
     setIsSending(true);
     setTotalSent(0);
     let successful = 0;
     let failed = 0;
     try {
-      for (let i = 0; i < numbers.length; i++) {
+      for (let i = 0; i < bulkDataArray.length; i++) {
         if (!sending) break;
         try {
-          await sendSingleMessage(from, numbers[i], text, type, fileData, apiEndpoint);
+          const { number, message } = bulkDataArray[i];
+          // Usar mensagem personalizada se disponível, senão usar a mensagem padrão
+          const textToSend = message && message.trim() ? message : fallbackText;
+          await sendSingleMessage(from, number, textToSend, type, fileData, apiEndpoint);
           successful++;
         } catch (err) {
-          console.error(`Erro ao enviar para ${numbers[i]}:`, err);
+          console.error(`Erro ao enviar para ${bulkDataArray[i].number}:`, err);
           failed++;
         }
         setTotalSent(i + 1);
-        setProgress(Math.round(((i + 1) / numbers.length) * 100));
+        setProgress(Math.round(((i + 1) / bulkDataArray.length) * 100));
         // Usar o delay selecionado pelo usuário
-        if (bulkDelay > 0 && i < numbers.length - 1) {
+        if (bulkDelay > 0 && i < bulkDataArray.length - 1) {
           await new Promise(resolve => setTimeout(resolve, bulkDelay * 1000));
         }
       }
@@ -324,23 +529,23 @@ export default function SendMessages() {
     // Agora cancela usando variável local
     // Não é possível acessar a variável local sending diretamente, então pode-se apenas avisar o usuário
     setIsSending(false);
-    setSuccess(`Envio cancelado. ${totalSent} mensagens enviadas de ${bulkNumbers.length}.`);
+    setSuccess(`Envio cancelado. ${totalSent} mensagens enviadas de ${bulkData.length}.`);
   };
 
   const downloadExampleFile = () => {
-    // Criar dados de exemplo
+    // Criar dados de exemplo com duas colunas
     const ws = XLSX.utils.aoa_to_sheet([
-      ['número'], // Cabeçalho
-      ['5511999999999'],
-      ['5511988888888'],
-      ['5511977777777']
+      ['número', 'mensagem'], // Cabeçalho
+      ['5511999999999', 'Olá João! Como você está?'],
+      ['5511988888888', 'Oi Maria, tudo bem?'],
+      ['5511977777777', 'Boa tarde Pedro! Lembre-se da reunião às 14h.']
     ]);
     
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Números');
+    XLSX.utils.book_append_sheet(wb, ws, 'Números e Mensagens');
     
     // Gerar e baixar o arquivo
-    XLSX.writeFile(wb, 'exemplo-numeros.xlsx');
+    XLSX.writeFile(wb, 'exemplo-numeros-personalizados.xlsx');
   };
 
   return (
@@ -477,12 +682,12 @@ export default function SendMessages() {
                 </div>
               )}
               
-              {/* Upload de arquivo para modo em massa */}
+              {/* Modo de envio em massa */}
               {sendMode === 'bulk' && (
                 <div>
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center justify-between mb-4">
                     <label className="block text-sm font-medium text-gray-700">
-                      Lista de números (Excel/CSV)
+                      Modo de Envio em Massa
                     </label>
                     <button
                       onClick={() => setShowExampleModal(true)}
@@ -492,51 +697,205 @@ export default function SendMessages() {
                     </button>
                   </div>
                   
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center">
-                    {bulkFile ? (
-                      <div className="w-full">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center">
-                            <FaFileExcel className="text-green-600 text-xl mr-2" />
-                            <span className="font-medium">{bulkFile.name}</span>
+                  {/* Seletor de modo de entrada */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                    <button
+                      onClick={() => setBulkMode('manual')}
+                      className={`flex items-center justify-center p-3 rounded-lg border-2 ${
+                        bulkMode === 'manual' 
+                          ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                          : 'border-gray-200 hover:bg-gray-50 text-gray-700'
+                      } transition-colors`}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 mr-2 ${bulkMode === 'manual' ? 'text-blue-600' : 'text-gray-500'}`} viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                      </svg>
+                      <div className="text-left">
+                        <p className="font-medium text-sm">Inserção Manual</p>
+                        <p className="text-xs text-gray-500">Digite os números separados</p>
+                      </div>
+                    </button>
+                    
+                    <button
+                      onClick={() => setBulkMode('file')}
+                      className={`flex items-center justify-center p-3 rounded-lg border-2 ${
+                        bulkMode === 'file' 
+                          ? 'border-green-500 bg-green-50 text-green-700' 
+                          : 'border-gray-200 hover:bg-gray-50 text-gray-700'
+                      } transition-colors`}
+                    >
+                      <FaFileExcel className={`text-lg mr-2 ${bulkMode === 'file' ? 'text-green-600' : 'text-gray-500'}`} />
+                      <div className="text-left">
+                        <p className="font-medium text-sm">Upload de Planilha</p>
+                        <p className="text-xs text-gray-500">Com mensagens personalizadas</p>
+                      </div>
+                    </button>
+                  </div>
+                  
+                  {/* Entrada manual de números */}
+                  {bulkMode === 'manual' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Lista de números (um por linha ou separados por vírgula)
+                      </label>
+                      <textarea
+                        value={manualNumbersText}
+                        onChange={(e) => {
+                          setManualNumbersText(e.target.value);
+                          processManualNumbers(e.target.value);
+                        }}
+                        rows={6}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        placeholder="5511999999999&#10;5511988888888&#10;5511977777777&#10;&#10;Ou separados por vírgula:&#10;5511999999999, 5511988888888, 5511977777777"
+                      />
+                      
+                      {/* Resumo dos números válidos/inválidos */}
+                      {(validBulkNumbers.length > 0 || invalidBulkNumbers.length > 0) && (
+                        <div className="mt-3">
+                          <div className="flex justify-between text-sm text-gray-600 mb-2">
+                            <span className="text-green-600">✓ Números válidos: {validBulkNumbers.length}</span>
+                            {invalidBulkNumbers.length > 0 && (
+                              <span className="text-red-600">✗ Inválidos: {invalidBulkNumbers.length}</span>
+                            )}
                           </div>
-                          <button
-                            onClick={() => {
-                              setBulkFile(null);
-                              setBulkNumbers([]);
-                              setValidBulkNumbers([]);
-                              setInvalidBulkNumbers([]);
-                              if (bulkFileInputRef.current) bulkFileInputRef.current.value = null;
-                            }}
-                            className="text-red-600 hover:text-red-800"
-                          >
-                            <FaTrash />
-                          </button>
-                        </div>
-                        
-                        <div className="flex justify-between text-sm text-gray-600 mb-1">
-                          <span>Números válidos: {validBulkNumbers.length}</span>
+                          
+                          {validBulkNumbers.length > 0 && (
+                            <div className="p-3 bg-green-50 rounded-lg max-h-24 overflow-y-auto border border-green-200">
+                              <div className="text-xs text-green-700 flex flex-wrap gap-1">
+                                {validBulkNumbers.slice(0, 15).map((num, idx) => (
+                                  <span key={idx} className="bg-green-200 px-2 py-1 rounded">
+                                    {num}
+                                  </span>
+                                ))}
+                                {validBulkNumbers.length > 15 && (
+                                  <span className="bg-green-300 px-2 py-1 rounded">
+                                    +{validBulkNumbers.length - 15} mais
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          
                           {invalidBulkNumbers.length > 0 && (
-                            <span className="text-red-600">{invalidBulkNumbers.length} inválidos</span>
+                            <div className="mt-2 p-3 bg-red-50 rounded-lg border border-red-200">
+                              <div className="text-xs text-red-700 font-semibold mb-1">Números inválidos:</div>
+                              <div className="flex flex-wrap gap-1">
+                                {invalidBulkNumbers.slice(0, 10).map((num, idx) => (
+                                  <span key={idx} className="bg-red-200 px-2 py-1 rounded">
+                                    {num}
+                                  </span>
+                                ))}
+                                {invalidBulkNumbers.length > 10 && (
+                                  <span className="bg-red-300 px-2 py-1 rounded">
+                                    +{invalidBulkNumbers.length - 10} mais
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           )}
                         </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Upload de arquivo Excel/CSV */}
+                  {bulkMode === 'file' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-3">
+                        Upload de planilha
+                      </label>
+                      
+                      {/* Botões para escolher o sub-modo */}
+                      {!bulkFile && (
+                        <div className="mb-4">
+                          <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-lg">
+                            <button
+                              type="button"
+                              onClick={() => setUploadSubMode('single-message')}
+                              className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                                uploadSubMode === 'single-message'
+                                  ? 'bg-white text-blue-600 shadow-sm border border-blue-200'
+                                  : 'text-gray-600 hover:text-gray-800'
+                              }`}
+                            >
+                              📄 Mensagem única
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setUploadSubMode('personalized-messages')}
+                              className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                                uploadSubMode === 'personalized-messages'
+                                  ? 'bg-white text-blue-600 shadow-sm border border-blue-200'
+                                  : 'text-gray-600 hover:text-gray-800'
+                              }`}
+                            >
+                              💬 Mensagens personalizadas
+                            </button>
+                          </div>
+                          
+                          <div className="mt-2 text-xs text-gray-500">
+                            {uploadSubMode === 'single-message' ? 
+                              '• Planilha com apenas números • Uma mensagem/arquivo para todos' :
+                              '• Planilha com números e mensagens • Mensagem diferente para cada número'
+                            }
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Área de upload */}
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center">
+                        {bulkFile ? (
+                          <div className="w-full">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center">
+                                <FaFileExcel className="text-green-600 text-xl mr-2" />
+                                <div>
+                                  <div className="font-medium">{bulkFile.name}</div>
+                                  <div className="text-xs text-gray-500">
+                                    Modo: {uploadSubMode === 'single-message' ? 'Mensagem única' : 'Mensagens personalizadas'}
+                                  </div>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setBulkFile(null);
+                                  setBulkNumbers([]);
+                                  setValidBulkNumbers([]);
+                                  setInvalidBulkNumbers([]);
+                                  setBulkData([]);
+                                  setShowBulkTable(false);
+                                  if (bulkFileInputRef.current) bulkFileInputRef.current.value = null;
+                                }}
+                                className="text-red-600 hover:text-red-800"
+                              >
+                                <FaTrash />
+                              </button>
+                            </div>
                         
-                        {validBulkNumbers.length > 0 && (
-                          <div className="mt-3 p-2 bg-gray-50 rounded-lg max-h-24 overflow-y-auto">
-                            <div className="text-xs text-gray-500 flex flex-wrap gap-1">
-                              {validBulkNumbers.slice(0, 20).map((num, idx) => (
-                                <span key={idx} className="bg-gray-200 px-2 py-1 rounded">
-                                  {num}
-                                </span>
-                              ))}
-                              {validBulkNumbers.length > 20 && (
-                                <span className="bg-gray-300 px-2 py-1 rounded">
-                                  +{validBulkNumbers.length - 20}
-                                </span>
+                            <div className="flex justify-between text-sm text-gray-600 mb-1">
+                              <span>Números válidos: {validBulkNumbers.length}</span>
+                              {invalidBulkNumbers.length > 0 && (
+                                <span className="text-red-600">{invalidBulkNumbers.length} inválidos</span>
                               )}
                             </div>
-                          </div>
-                        )}
+                            
+                            {/* Mostrar resumo apenas no modo mensagem única */}
+                            {uploadSubMode === 'single-message' && validBulkNumbers.length > 0 && (
+                              <div className="mt-3 p-2 bg-gray-50 rounded-lg max-h-24 overflow-y-auto">
+                                <div className="text-xs text-gray-500 flex flex-wrap gap-1">
+                                  {validBulkNumbers.slice(0, 20).map((num, idx) => (
+                                    <span key={idx} className="bg-gray-200 px-2 py-1 rounded">
+                                      {num}
+                                    </span>
+                                  ))}
+                                  {validBulkNumbers.length > 20 && (
+                                    <span className="bg-gray-300 px-2 py-1 rounded">
+                                      +{validBulkNumbers.length - 20}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
                         
                         {/* Após o bloco que mostra números válidos, adicionar bloco para inválidos */}
                         {invalidBulkNumbers.length > 0 && (
@@ -562,6 +921,86 @@ export default function SendMessages() {
                               ))}
                             </div>
                             <div className="text-xs text-gray-500 mt-1">Remova ou corrija os números inválidos para evitar problemas no envio.</div>
+                          </div>
+                        )}
+                        
+                        {/* Tabela editável para visualizar e editar números e mensagens - apenas no modo personalizado */}
+                        {showBulkTable && bulkData.length > 0 && uploadSubMode === 'personalized-messages' && (
+                          <div className="mt-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-medium text-gray-700">Dados carregados ({bulkData.length} registro{bulkData.length > 1 ? 's' : ''})</h4>
+                              <button
+                                onClick={handleAddRow}
+                                className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                              >
+                                + Adicionar linha
+                              </button>
+                            </div>
+                            
+                            <div className="border rounded-lg overflow-hidden">
+                              <div className="max-h-96 overflow-y-auto">
+                                <table className="w-full text-sm">
+                                  <thead className="bg-gray-50 sticky top-0">
+                                    <tr>
+                                      <th className="px-3 py-2 text-left text-gray-600 font-medium border-b">#</th>
+                                      <th className="px-3 py-2 text-left text-gray-600 font-medium border-b">Número</th>
+                                      <th className="px-3 py-2 text-left text-gray-600 font-medium border-b">Mensagem Personalizada</th>
+                                      <th className="px-3 py-2 text-center text-gray-600 font-medium border-b w-16">Ações</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {bulkData.map((row, index) => (
+                                      <tr key={index} className="border-b hover:bg-gray-50">
+                                        <td className="px-3 py-2 text-gray-500 font-mono text-xs">
+                                          {String(index + 1).padStart(2, '0')}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                          <input
+                                            type="text"
+                                            value={row.number}
+                                            onChange={(e) => handleCellEdit(index, 'number', e.target.value)}
+                                            className={`w-full px-2 py-1 border rounded text-sm font-mono
+                                              ${validatePhoneNumber(row.number) 
+                                                ? 'border-green-300 bg-green-50' 
+                                                : 'border-red-300 bg-red-50'
+                                              }
+                                              focus:outline-none focus:ring-2 focus:ring-blue-300`}
+                                            placeholder="5511999999999"
+                                          />
+                                        </td>
+                                        <td className="px-3 py-2">
+                                          <input
+                                            type="text"
+                                            value={row.message || ''}
+                                            onChange={(e) => handleCellEdit(index, 'message', e.target.value)}
+                                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                                            placeholder="Mensagem personalizada (opcional)"
+                                          />
+                                        </td>
+                                        <td className="px-3 py-2 text-center">
+                                          <button
+                                            onClick={() => handleRemoveRow(index)}
+                                            className="text-red-500 hover:text-red-700 p-1"
+                                            title="Remover linha"
+                                          >
+                                            <FaTrash className="text-xs" />
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                            
+                            <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+                              <span>
+                                ✅ {validBulkNumbers.length} válidos | ❌ {invalidBulkNumbers.length} inválidos
+                              </span>
+                              <span>
+                                💬 {bulkData.filter(item => item.message && item.message.trim()).length} com mensagem personalizada
+                              </span>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -597,164 +1036,170 @@ export default function SendMessages() {
                       className="hidden"
                     />
                   </div>
-                </div>
-              )}
-              
-              {/* Tipo de mensagem */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tipo de mensagem
-                </label>
-                <div className="grid grid-cols-4 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMessageType('text');
-                      setFile(null);
-                      setPreviewUrl('');
-                      if (fileInputRef.current) fileInputRef.current.value = null;
-                    }}
-                    className={`flex flex-col items-center justify-center p-3 rounded-lg border ${
-                      messageType === 'text'
-                        ? 'border-green-500 bg-green-50 text-green-700'
-                        : 'border-gray-200 hover:bg-gray-50 text-gray-600'
-                    }`}
-                  >
-                    <FaWhatsapp className={`text-xl mb-1 ${messageType === 'text' ? 'text-green-600' : 'text-gray-500'}`} />
-                    <span className="text-sm">Texto</span>
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={() => setMessageType('image')}
-                    className={`flex flex-col items-center justify-center p-3 rounded-lg border ${
-                      messageType === 'image'
-                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                        : 'border-gray-200 hover:bg-gray-50 text-gray-600'
-                    }`}
-                  >
-                    <FaImage className={`text-xl mb-1 ${messageType === 'image' ? 'text-blue-600' : 'text-gray-500'}`} />
-                    <span className="text-sm">Imagem</span>
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={() => setMessageType('video')}
-                    className={`flex flex-col items-center justify-center p-3 rounded-lg border ${
-                      messageType === 'video'
-                        ? 'border-red-500 bg-red-50 text-red-700'
-                        : 'border-gray-200 hover:bg-gray-50 text-gray-600'
-                    }`}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 mb-1 ${messageType === 'video' ? 'text-red-600' : 'text-gray-500'}`} viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
-                    </svg>
-                    <span className="text-sm">Vídeo</span>
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={() => setMessageType('document')}
-                    className={`flex flex-col items-center justify-center p-3 rounded-lg border ${
-                      messageType === 'document'
-                        ? 'border-yellow-500 bg-yellow-50 text-yellow-700'
-                        : 'border-gray-200 hover:bg-gray-50 text-gray-600'
-                    }`}
-                  >
-                    <FaFileAlt className={`text-xl mb-1 ${messageType === 'document' ? 'text-yellow-600' : 'text-gray-500'}`} />
-                    <span className="text-sm">Documento</span>
-                  </button>
-                </div>
-              </div>
-              
-              {/* Mensagem de texto */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {messageType === 'text' ? 'Mensagem' : 'Legenda (opcional)'}
-                </label>
-                <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  rows={5}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
-                  placeholder={messageType === 'text' 
-                    ? 'Digite sua mensagem aqui...' 
-                    : 'Digite uma legenda para o arquivo (opcional)'}
-                  required={messageType === 'text'}
-                />
-              </div>
-              
-              {/* Upload de arquivo */}
-              {messageType !== 'text' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {messageType === 'image' ? 'Imagem' : messageType === 'video' ? 'Vídeo' : 'Documento'}
-                  </label>
-                  
-                  {file ? (
-                    <div className="relative border rounded-lg overflow-hidden">
-                      {messageType === 'image' && (
-                        <img 
-                          src={previewUrl} 
-                          alt="Preview" 
-                          className="w-full h-48 object-contain bg-gray-100"
-                        />
-                      )}
-                      
-                      {messageType === 'video' && (
-                        <video 
-                          src={previewUrl} 
-                          controls 
-                          className="w-full h-48 object-contain bg-gray-100"
-                        />
-                      )}
-                      
-                      {messageType === 'document' && (
-                        <div className="flex items-center p-4 bg-gray-100">
-                          <FaFileAlt className="text-gray-500 text-xl mr-3" />
-                          <span className="font-medium truncate">{file.name}</span>
-                        </div>
-                      )}
-                      
-                      <button
-                        onClick={() => {
-                          setFile(null);
-                          setPreviewUrl('');
-                          if (fileInputRef.current) fileInputRef.current.value = null;
-                        }}
-                        className="absolute top-2 right-2 bg-white p-1 rounded-full shadow-md hover:bg-gray-100 transition-colors"
-                        title="Remover arquivo"
-                      >
-                        <FaTimes className="text-red-500" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div
-                      onClick={() => fileInputRef.current?.click()}
-                      className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors"
-                    >
-                      <FaUpload className="text-gray-400 text-3xl mb-3" />
-                      <p className="text-center text-gray-500">
-                        Clique para selecionar um {
-                          messageType === 'image' ? 'imagem' : 
-                          messageType === 'video' ? 'vídeo' : 
-                          'documento'
-                        }
-                      </p>
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleFileSelect}
-                        accept={
-                          messageType === 'image' ? 'image/*' : 
-                          messageType === 'video' ? 'video/*' : 
-                          '.pdf,.doc,.docx,.xls,.xlsx'
-                        }
-                        className="hidden"
-                      />
                     </div>
                   )}
                 </div>
+              )}
+              
+              {/* Tipo de mensagem, Mensagem de texto e Upload de arquivo - ocultar no modo upload com mensagens personalizadas */}
+              {!(sendMode === 'bulk' && bulkMode === 'file' && uploadSubMode === 'personalized-messages') && (
+                <div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Tipo de mensagem
+                    </label>
+                  <div className="grid grid-cols-4 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMessageType('text');
+                        setFile(null);
+                        setPreviewUrl('');
+                        if (fileInputRef.current) fileInputRef.current.value = null;
+                      }}
+                      className={`flex flex-col items-center justify-center p-3 rounded-lg border ${
+                        messageType === 'text'
+                          ? 'border-green-500 bg-green-50 text-green-700'
+                          : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+                      }`}
+                    >
+                      <FaWhatsapp className={`text-xl mb-1 ${messageType === 'text' ? 'text-green-600' : 'text-gray-500'}`} />
+                      <span className="text-sm">Texto</span>
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => setMessageType('image')}
+                      className={`flex flex-col items-center justify-center p-3 rounded-lg border ${
+                        messageType === 'image'
+                          ? 'border-blue-500 bg-blue-50 text-blue-700'
+                          : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+                      }`}
+                    >
+                      <FaImage className={`text-xl mb-1 ${messageType === 'image' ? 'text-blue-600' : 'text-gray-500'}`} />
+                      <span className="text-sm">Imagem</span>
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => setMessageType('video')}
+                      className={`flex flex-col items-center justify-center p-3 rounded-lg border ${
+                        messageType === 'video'
+                          ? 'border-red-500 bg-red-50 text-red-700'
+                          : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+                      }`}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 mb-1 ${messageType === 'video' ? 'text-red-600' : 'text-gray-500'}`} viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
+                      </svg>
+                      <span className="text-sm">Vídeo</span>
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => setMessageType('document')}
+                      className={`flex flex-col items-center justify-center p-3 rounded-lg border ${
+                        messageType === 'document'
+                          ? 'border-yellow-500 bg-yellow-50 text-yellow-700'
+                          : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+                      }`}
+                    >
+                      <FaFileAlt className={`text-xl mb-1 ${messageType === 'document' ? 'text-yellow-600' : 'text-gray-500'}`} />
+                      <span className="text-sm">Documento</span>
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Mensagem de texto */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {messageType === 'text' ? 'Mensagem' : 'Legenda (opcional)'}
+                  </label>
+                  <textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    rows={5}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                    placeholder={messageType === 'text' 
+                      ? 'Digite sua mensagem aqui...' 
+                      : 'Digite uma legenda para o arquivo (opcional)'}
+                    required={messageType === 'text'}
+                  />
+                </div>
+                
+                {/* Upload de arquivo */}
+                {messageType !== 'text' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      {messageType === 'image' ? 'Imagem' : messageType === 'video' ? 'Vídeo' : 'Documento'}
+                    </label>
+                    
+                    {file ? (
+                      <div className="relative border rounded-lg overflow-hidden">
+                        {messageType === 'image' && (
+                          <img 
+                            src={previewUrl} 
+                            alt="Preview" 
+                            className="w-full h-48 object-contain bg-gray-100"
+                          />
+                        )}
+                        
+                        {messageType === 'video' && (
+                          <video 
+                            src={previewUrl} 
+                            controls 
+                            className="w-full h-48 object-contain bg-gray-100"
+                          />
+                        )}
+                        
+                        {messageType === 'document' && (
+                          <div className="flex items-center p-4 bg-gray-100">
+                            <FaFileAlt className="text-gray-500 text-xl mr-3" />
+                            <span className="font-medium truncate">{file.name}</span>
+                          </div>
+                        )}
+                        
+                        <button
+                          onClick={() => {
+                            setFile(null);
+                            setPreviewUrl('');
+                            if (fileInputRef.current) fileInputRef.current.value = null;
+                          }}
+                          className="absolute top-2 right-2 bg-white p-1 rounded-full shadow-md hover:bg-gray-100 transition-colors"
+                          title="Remover arquivo"
+                        >
+                          <FaTimes className="text-red-500" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => fileInputRef.current?.click()}
+                        className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors"
+                      >
+                        <FaUpload className="text-gray-400 text-3xl mb-3" />
+                        <p className="text-center text-gray-500">
+                          Clique para selecionar um {
+                            messageType === 'image' ? 'imagem' : 
+                            messageType === 'video' ? 'vídeo' : 
+                            'documento'
+                          }
+                        </p>
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleFileSelect}
+                          accept={
+                            messageType === 'image' ? 'image/*' : 
+                            messageType === 'video' ? 'video/*' : 
+                            '.pdf,.doc,.docx,.xls,.xlsx'
+                          }
+                          className="hidden"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
               )}
               
               {/* Intervalo entre envios (apenas para envio em massa) */}
@@ -924,28 +1369,49 @@ export default function SendMessages() {
             
             <div className="p-6">
               <p className="text-gray-600 mb-4">
-                O arquivo para envio em massa deve seguir este formato:
+                Dependendo do modo escolhido, você pode usar um dos formatos abaixo:
               </p>
               
-              <div className="bg-gray-50 p-4 rounded-lg mb-6 overflow-x-auto">
-                <table className="min-w-full border border-gray-200">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="py-2 px-4 border-b border-r border-gray-200 text-left">número</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="py-2 px-4 border-b border-r border-gray-200">5511999999999</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 px-4 border-b border-r border-gray-200">5511988888888</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 px-4 border-b border-r border-gray-200">5511977777777</td>
-                    </tr>
-                  </tbody>
-                </table>
+              <div className="mb-6">
+                <h4 className="font-semibold text-gray-800 mb-3">Modo Manual - Apenas Números</h4>
+                <div className="bg-gray-50 p-3 rounded-lg text-sm text-gray-700">
+                  <p className="mb-2">Digite os números separados por quebra de linha ou vírgula:</p>
+                  <code className="block bg-white p-2 rounded border">
+                    5511999999999<br/>
+                    5511988888888<br/>
+                    5511977777777<br/>
+                    <br/>
+                    Ou: 5511999999999, 5511988888888, 5511977777777
+                  </code>
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <h4 className="font-semibold text-gray-800 mb-3">Modo Planilha - Com Mensagens Personalizadas</h4>
+                <div className="bg-gray-50 p-4 rounded-lg overflow-x-auto">
+                  <table className="min-w-full border border-gray-200">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="py-2 px-4 border-b border-r border-gray-200 text-left">número</th>
+                        <th className="py-2 px-4 border-b border-gray-200 text-left">mensagem</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="py-2 px-4 border-b border-r border-gray-200">5511999999999</td>
+                        <td className="py-2 px-4 border-b border-gray-200">Olá João! Como você está?</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 px-4 border-b border-r border-gray-200">5511988888888</td>
+                        <td className="py-2 px-4 border-b border-gray-200">Oi Maria, tudo bem?</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 px-4 border-b border-r border-gray-200">5511977777777</td>
+                        <td className="py-2 px-4 border-b border-gray-200">Pedro, reunião às 14h!</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
               
               <div className="space-y-3 text-gray-600">
@@ -953,9 +1419,10 @@ export default function SendMessages() {
                   <span className="font-medium">Importante:</span>
                 </p>
                 <ul className="list-disc ml-5 space-y-1">
-                  <li>O cabeçalho deve conter a palavra "número" ou "numero"</li>
+                  <li>Para planilhas, a primeira coluna deve ser "número" ou "numero"</li>
+                  <li>A segunda coluna pode ser "mensagem" para personalização (opcional)</li>
                   <li>Cada linha deve conter um número no formato internacional</li>
-                  <li>Não use espaços, parênteses ou outros caracteres especiais</li>
+                  <li>Não use espaços, parênteses ou outros caracteres especiais nos números</li>
                   <li>Excel (.xlsx, .xls) ou CSV são aceitos</li>
                 </ul>
               </div>
