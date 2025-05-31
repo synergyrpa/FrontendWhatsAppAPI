@@ -74,7 +74,7 @@ export default function Dashboard() {
       if (workers && workers.length > 0 && numeroSelecionado) {
         console.log('📊 Dashboard: Buscando relatórios para número:', numeroSelecionado);
         
-        const response = await apiClient.get('/api/v1/sends-report', {
+        const response = await apiClient.get('/api/v2/reports/sends', {
           params: {
             from_number: numeroSelecionado,
             init_time: dataInicial,

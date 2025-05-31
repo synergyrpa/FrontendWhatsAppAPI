@@ -33,7 +33,7 @@ export default function QRCodePage() {
     setLoading(true);
     try {
       console.log('📱 QRCode: Verificando status para número:', number);
-      const res = await apiClient.get('/api/v1/number-status', {
+      const res = await apiClient.get('/api/v2/numbers/status', {
         params: { number }
       });
 

@@ -254,32 +254,35 @@ export default function SendMessages() {
 
   const sendSingleMessage = async (from, to, text, type, fileData, apiEndpoint) => {
     if (type === 'text') {
-      // Para mensagens de texto, usar JSON
+      // Para mensagens de texto, usar JSON na API v2
       const payload = {
         from_number: from,
         to_number: to,
+        media_type: 'text',
         content: text
       };
       
-      await apiClient.post(`/api/v1/send-${type}`, payload);
+      await apiClient.post('/api/v2/sends', payload);
     } else {
-      // Para arquivos, usar FormData
+      // Para arquivos, usar FormData na API v2
       const formData = new FormData();
       formData.append('from_number', from);
       formData.append('to_number', to);
+      formData.append('media_type', type);
       
       if (fileData) {
         formData.append('file', fileData);
-        formData.append('caption', text || ''); // Legenda opcional
+        if (text) {
+          formData.append('caption', text); // Legenda opcional
+        }
       }
       
       await apiClient.post(
-        `/api/v1/send/${type}`,
+        '/api/v2/upload/sends',
         formData,
         {
           headers: {
-            'Content-Type': 'multipart/form-data',
-            'Token': 'bearer_token'
+            'Content-Type': 'multipart/form-data'
           }
         }
       );

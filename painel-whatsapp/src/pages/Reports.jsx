@@ -37,7 +37,7 @@ export default function Reports() {
 
     try {
       console.log('🔍 Reports: Buscando relatórios para:', numeroSelecionado);
-      const response = await apiClient.get('/api/v1/sends-report', {
+      const response = await apiClient.get('/api/v2/reports/sends', {
         params: {
           from_number: numeroSelecionado,
           init_time: dataInicial,

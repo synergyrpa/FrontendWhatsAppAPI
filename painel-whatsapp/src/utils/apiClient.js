@@ -18,10 +18,27 @@ apiClient.interceptors.request.use(
       const token = getBearerToken();
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
+        
+        // Alguns endpoints v2 requerem também o header 'token' para compatibilidade
+        const tokenHeaderEndpoints = [
+          '/api/v2/numbers',
+          '/api/v2/numbers/add', 
+          '/api/v2/numbers/status',
+          '/api/v2/users/register',
+          '/api/v2/users/remove'
+        ];
+        
+        const needsTokenHeader = tokenHeaderEndpoints.some(endpoint => 
+          config.url?.includes(endpoint)
+        );
+        
+        if (needsTokenHeader) {
+          config.headers.token = token;
+        }
       }
     } else {
       // Token inválido ou expirado
-      const publicRoutes = ['/api/v1/request-otp', '/api/v1/validate-otp'];
+      const publicRoutes = ['/api/v2/auth/otp/request', '/api/v2/auth/otp/validate'];
       const isPublicRoute = publicRoutes.some(route => config.url?.includes(route));
       
       if (!isPublicRoute) {

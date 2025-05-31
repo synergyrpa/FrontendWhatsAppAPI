@@ -27,7 +27,7 @@ export default function Login() {
     }
 
     try {
-      const response = await axios.post(`${WppApiEndpoint}/api/v1/request-otp`, {
+      const response = await axios.post(`${WppApiEndpoint}/api/v2/auth/otp/request`, {
         otp_type: 'login',
         otp_for: 'email',
         email: email,

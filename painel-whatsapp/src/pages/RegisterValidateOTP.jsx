@@ -15,31 +15,37 @@ export default function ValidateOTP() {
     const WppApiEndpoint = import.meta.env.VITE_WPP_API_ENDPOINT;
 
     try {
-      const emailResponse = await axios.post(`${WppApiEndpoint}/api/v1/validate-otp`, {
-        otp_type: 'login',
+      const response = await axios.post(`${WppApiEndpoint}/api/v2/auth/otp/validate`, {
+        otp_type: 'register',
         otp_for: 'email',
-        email_otp_code: emailOTP,
-        email: localStorage.getItem('pendingEmail'),
-      });
-
-      const whatsappResponse = await axios.post(`${WppApiEndpoint}/api/v1/validate-otp`, {
-        otp_type: 'login',
-        otp_for: 'number',
-        number_otp_code: whatsappOTP,
         email: localStorage.getItem('pendingEmail'),
         number: localStorage.getItem('pendingPhone'),
+        email_otp_code: emailOTP,
+        number_otp_code: whatsappOTP,
       });
 
-      if (emailResponse.data.success && whatsappResponse.data.success) {
-        localStorage.setItem('token', localStorage.getItem('pendingEmail'));
+      if (response.data.success) {
+        // Save authentication data from v2 response
+        const { token, expires_in } = response.data;
+        if (token && expires_in) {
+          setAuthData(token, expires_in);
+          
+          // Save user email
+          const userEmail = localStorage.getItem('pendingEmail');
+          if (userEmail) {
+            setUserEmail(userEmail);
+          }
+        }
+        
         localStorage.removeItem('pendingEmail');
+        localStorage.removeItem('pendingPhone');
         navigate('/dashboard');
       } else {
         setErro('Códigos inválidos');
       }
     } catch (error) {
       console.error(error);
-      setErro('Erro ao validar códigos');
+      setErro(error.response?.data?.description || 'Erro ao validar códigos');
     }
   };
 

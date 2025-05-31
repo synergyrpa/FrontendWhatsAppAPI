@@ -15,7 +15,7 @@ export default function Workers() {
 
   const carregarWorkers = async () => {
     try {
-      const res = await apiClient.get('/api/v1/numbers');
+      const res = await apiClient.get('/api/v2/numbers');
       setWorkers(res.data.description.workers);
     } catch (err) {
       console.error('Erro ao carregar os números:', err);

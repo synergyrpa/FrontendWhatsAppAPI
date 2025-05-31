@@ -32,17 +32,21 @@ export default function ValidateOTP() {
     try {
       const payload = isLogin 
         ? {
-            email_otp_code: emailOTP,
+            otp_type: 'login',
+            otp_for: 'email',
             email: localStorage.getItem('pendingEmail'),
+            email_otp_code: emailOTP,
           }
         : {
-            email_otp_code: emailOTP,
-            whatsapp_otp_code: whatsappOTP,
+            otp_type: 'register',
+            otp_for: 'email',
             email: localStorage.getItem('pendingEmail'),
-            phone: localStorage.getItem('pendingPhone'),
+            number: localStorage.getItem('pendingPhone'),
+            email_otp_code: emailOTP,
+            number_otp_code: whatsappOTP,
           };
 
-      const response = await axios.post(`${WppApiEndpoint}/api/v1/validate-otp`, payload);
+      const response = await axios.post(`${WppApiEndpoint}/api/v2/auth/otp/validate`, payload);
 
       if (response.data.success) {
         console.log('✅ OTP validado com sucesso:', response.data);
@@ -99,21 +103,22 @@ export default function ValidateOTP() {
     const phone = localStorage.getItem('pendingPhone');
 
     try {
+      console.log('WppApiEndpoint',WppApiEndpoint)
       if (isLogin) {
-        await axios.post(`${WppApiEndpoint}/api/v1/request-otp`, {
+        await axios.post(`${WppApiEndpoint}/api/v2/auth/otp/request`, {
           otp_type: 'login',
           otp_for: 'email',
           email: email,
         });
       } else {
-        await axios.post(`${WppApiEndpoint}/api/v1/request-otp`, {
+        await axios.post(`${WppApiEndpoint}/api/v2/auth/otp/request`, {
           otp_type: 'register',
           otp_for: 'email',
           email: email,
           number: phone,
         });
 
-        await axios.post(`${WppApiEndpoint}/api/v1/request-otp`, {
+        await axios.post(`${WppApiEndpoint}/api/v2/auth/otp/request`, {
           otp_type: 'register',
           otp_for: 'number',
           number: phone,

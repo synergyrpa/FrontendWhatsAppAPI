@@ -36,14 +36,14 @@ export default function Register() {
     }
 
     try {
-      const emailResponse = await axios.post(`${WppApiEndpoint}/api/v1/request-otp`, {
+      const emailResponse = await axios.post(`${WppApiEndpoint}/api/v2/auth/otp/request`, {
         otp_type: 'register',
         otp_for: 'email',
         email: email,
         number: celular,
       });
 
-      const whatsappResponse = await axios.post(`${WppApiEndpoint}/api/v1/request-otp`, {
+      const whatsappResponse = await axios.post(`${WppApiEndpoint}/api/v2/auth/otp/request`, {
         otp_type: 'register',
         otp_for: 'number',
         number: celular,

@@ -22,7 +22,7 @@ export default function StatusPage() {
       await Promise.all(
         workers.map(async (number) => {
           try {
-            const res = await apiClient.get('/api/v1/number-status', {
+            const res = await apiClient.get('/api/v2/numbers/status', {
               params: { number }
             });
             

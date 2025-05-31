@@ -20,9 +20,9 @@ export const NumbersProvider = ({ children }) => {
     setLoading(true);
     setErro(''); // Limpar erro anterior
     try {
-      console.log("Fazendo requisição para /api/v1/numbers");
-      const res = await apiClient.get('/api/v1/numbers');
-      console.log("Resposta da API /api/v1/numbers:", res.data);
+      console.log("Fazendo requisição para /api/v2/numbers");
+      const res = await apiClient.get('/api/v2/numbers');
+      console.log("Resposta da API /api/v2/numbers:", res.data);
       
       if (res.data && res.data.description) {
         setNumbers(res.data.description);

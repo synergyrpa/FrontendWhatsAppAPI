@@ -36,9 +36,9 @@ export default function ManageNumbers() {
     
     setLoading(true);
     try {
-      await apiClient.post('/api/v1/number', { 
+      await apiClient.post('/api/v2/numbers/add', { 
         number: novoNumero, 
-        role: tipoSelecionado 
+        role: tipoSelecionado === 'workers' ? 'worker' : 'admin'
       });
       setSucesso(`Número ${novoNumero} adicionado com sucesso!`);
       setNovoNumero('');
@@ -57,8 +57,11 @@ export default function ManageNumbers() {
     setRemovalLoading(prev => ({ ...prev, [number]: true }));
     
     try {
-      await apiClient.delete('/api/v1/number', {
-        data: { number, role: tipoSelecionado }
+      await apiClient.delete('/api/v2/numbers', {
+        data: { 
+          number, 
+          role: tipoSelecionado === 'workers' ? 'worker' : 'admin'
+        }
       });
       setSucesso(`Número ${number} removido com sucesso!`);
       refreshNumbers();
