@@ -38,7 +38,7 @@ export default function ManageNumbers() {
     try {
       await apiClient.post('/api/v2/numbers/add', { 
         number: novoNumero, 
-        role: tipoSelecionado === 'workers' ? 'worker' : 'admin'
+        role: tipoSelecionado === 'workers' ? 'workers' : 'admins'
       });
       setSucesso(`Número ${novoNumero} adicionado com sucesso!`);
       setNovoNumero('');
@@ -60,7 +60,7 @@ export default function ManageNumbers() {
       await apiClient.delete('/api/v2/numbers', {
         data: { 
           number, 
-          role: tipoSelecionado === 'workers' ? 'worker' : 'admin'
+          role: tipoSelecionado === 'workers' ? 'workers' : 'admins'
         }
       });
       setSucesso(`Número ${number} removido com sucesso!`);
