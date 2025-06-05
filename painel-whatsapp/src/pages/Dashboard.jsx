@@ -487,10 +487,13 @@ export default function Dashboard() {
             <h2 className="text-lg font-semibold text-gray-700">Atividade Recente</h2>
             {dashboardData.recentActivity.length > 0 && (
               <button 
-                onClick={() => navigate('/reports')}
-                className="text-blue-600 text-sm hover:text-blue-800 font-medium"
+                onClick={() => navigate(`/reports?autoload=today&number=${encodeURIComponent(selectedNumber)}`)}
+                className="text-blue-600 text-sm hover:text-blue-800 font-medium transition-colors duration-200 flex items-center"
               >
                 Ver tudo
+                <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </button>
             )}
           </div>

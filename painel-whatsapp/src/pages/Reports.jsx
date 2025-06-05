@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import apiClient from '../utils/apiClient';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
@@ -11,6 +12,7 @@ import { useNumbers } from '../context/NumbersContext';
 import { FaFilter, FaFileExcel, FaChartBar, FaSearch, FaCalendarAlt, FaPhoneAlt, FaExclamationCircle } from 'react-icons/fa';
 
 export default function Reports() {
+  const location = useLocation();
   const { workers, admins, numbersLoading, numbersErro } = useNumbers();
   const [relatorios, setRelatorios] = useState([]);
   const [dataInicial, setDataInicial] = useState('');
@@ -20,10 +22,93 @@ export default function Reports() {
   const [erro, setErro] = useState('');
   const [animated, setAnimated] = useState(false);
   const [pesquisaRealizada, setPesquisaRealizada] = useState(false);
+  const [autoLoadExecuted, setAutoLoadExecuted] = useState(false);
+  const [isAutoLoaded, setIsAutoLoaded] = useState(false);
 
   useEffect(() => {
     setAnimated(true);
   }, []);
+
+  // Efeito para carregar automaticamente dados do dia atual quando vem da dashboard
+  useEffect(() => {
+    const autoLoadReports = async () => {
+      // Verifica se vem da dashboard (sem parâmetros específicos na URL)
+      // ou se é o primeiro carregamento da página
+      if (!autoLoadExecuted && workers && workers.length > 0) {
+        console.log('🚀 Reports: Auto-carregando dados do dia atual...');
+        
+        // Pega parâmetros da URL
+        const urlParams = new URLSearchParams(location.search);
+        const autoload = urlParams.get('autoload');
+        const numberFromUrl = urlParams.get('number');
+        
+        // Define data atual
+        const hoje = new Date().toLocaleDateString('sv-SE'); // formato YYYY-MM-DD
+        const amanha = new Date();
+        amanha.setDate(amanha.getDate() + 1);
+        const amanhaFormatado = amanha.toLocaleDateString('sv-SE');
+        
+        setDataInicial(hoje);
+        setDataFinal(amanhaFormatado);
+        
+        // Seleciona o número: primeiro tenta o da URL, depois o primeiro disponível
+        let numeroParaUsar = workers[0]; // padrão
+        if (numberFromUrl && workers.includes(numberFromUrl)) {
+          numeroParaUsar = numberFromUrl;
+          console.log('📱 Reports: Usando número da Dashboard:', numeroParaUsar);
+        } else if (workers.length > 0) {
+          numeroParaUsar = workers[0];
+          console.log('📱 Reports: Usando primeiro número disponível:', numeroParaUsar);
+        }
+        
+        setNumeroSelecionado(numeroParaUsar);
+        
+        // Executa busca automaticamente apenas se for autoload=today
+        if (autoload === 'today') {
+          setTimeout(async () => {
+            try {
+              setLoading(true);
+              setErro('');
+              setPesquisaRealizada(true);
+              setIsAutoLoaded(true);
+              
+              console.log('🔍 Reports: Buscando dados para:', {
+                numero: numeroParaUsar,
+                dataInicial: hoje,
+                dataFinal: amanhaFormatado
+              });
+              
+              const response = await apiClient.get('/api/v2/reports/sends', {
+                params: {
+                  from_number: numeroParaUsar,
+                  init_time: hoje,
+                  end_time: amanhaFormatado,
+                },
+              });
+              
+              console.log('✅ Reports: Dados do dia atual carregados:', response.data);
+              if (response.data.description && Array.isArray(response.data.description)) {
+                setRelatorios(response.data.description);
+              } else {
+                setRelatorios([]);
+              }
+            } catch (err) {
+              console.error('❌ Reports: Erro ao carregar dados do dia atual:', err);
+              setErro(err.response?.data?.description || 'Erro ao carregar relatórios do dia atual');
+            } finally {
+              setLoading(false);
+            }
+          }, 500); // Pequeno delay para garantir que a interface foi renderizada
+        }
+        
+        setAutoLoadExecuted(true);
+      }
+    };
+
+    if (!numbersLoading && !numbersErro) {
+      autoLoadReports();
+    }
+  }, [workers, numbersLoading, numbersErro, autoLoadExecuted, location.search]);
 
   const buscarRelatorios = async () => {
     if (!numeroSelecionado) {
@@ -172,11 +257,15 @@ export default function Reports() {
   return (
     <DashboardLayout>
       <div className={`transition-all duration-500 ${animated ? 'opacity-100' : 'opacity-0'}`}>
-        <div className="flex items-center mb-6">
-          <div className="bg-gradient-to-r from-blue-500 to-indigo-600 w-12 h-12 rounded-lg flex items-center justify-center mr-4 shadow-lg">
-            <FaChartBar className="text-white text-xl" />
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center">
+            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 w-12 h-12 rounded-lg flex items-center justify-center mr-4 shadow-lg">
+              <FaChartBar className="text-white text-xl" />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-800">Relatórios</h1>
           </div>
-          <h1 className="text-2xl font-bold text-gray-800">Relatórios</h1>
+          
+
         </div>
 
         <div className="bg-white rounded-xl shadow-md p-6 mb-8 border border-gray-100">
@@ -265,10 +354,26 @@ export default function Reports() {
             <div className="mt-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-800 flex items-center">
               <FaFilter className="mr-2 text-blue-500" />
               <span>
-                Filtro aplicado: {numeroSelecionado && `Número: ${numeroSelecionado}`}
-                {dataInicial && ` • De: ${dataInicial}`}
-                {dataFinal && ` • Até: ${dataFinal}`}
-                {(!dataInicial && !dataFinal) && ' • Todos os períodos'}
+                {(() => {
+                  const hoje = new Date().toLocaleDateString('sv-SE');
+                  const amanha = new Date();
+                  amanha.setDate(amanha.getDate() + 1);
+                  const amanhaFormatado = amanha.toLocaleDateString('sv-SE');
+                  
+                  // Verifica se é busca do dia atual (hoje até amanhã)
+                  if (dataInicial === hoje && dataFinal === amanhaFormatado) {
+                    return `Filtro aplicado: ${numeroSelecionado ? `Número: ${numeroSelecionado} • ` : ''}📅 Envios de hoje (${hoje})`;
+                  }
+                  
+                  // Filtro normal
+                  const parts = ['Filtro aplicado:'];
+                  if (numeroSelecionado) parts.push(`Número: ${numeroSelecionado}`);
+                  if (dataInicial) parts.push(`De: ${dataInicial}`);
+                  if (dataFinal) parts.push(`Até: ${dataFinal}`);
+                  if (!dataInicial && !dataFinal) parts.push('Todos os períodos');
+                  
+                  return parts.join(' • ');
+                })()}
               </span>
             </div>
           )}
