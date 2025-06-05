@@ -27,7 +27,7 @@ export default function Home() {
             <h1 className="text-6xl font-bold text-white mb-6 drop-shadow-lg">
               Bem-vindo ao <span className="text-blue-200">Painel WhatsApp</span>
             </h1>
-            <p className="text-xl text-black-100 mb-8 max-w-3xl mx-auto">
+            <p className="text-xl text-black font-bold mb-8 max-w-3xl mx-auto drop-shadow-lg">
               Gerencie suas mensagens e contatos do WhatsApp de forma eficiente e organizada com nossa plataforma intuitiva
             </p>
           </div>
@@ -98,7 +98,7 @@ export default function Home() {
                   <FaRocket className="text-3xl text-green-600" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-800 mb-3">Integração simples</h3>
-                <p className="text-gray-600">Conecte-se facilmente com o WhatsApp e outras plataformas de comunicação</p>
+                <p className="text-gray-600">Conecte-se facilmente com o WhatsApp e automatize suas comunicações de forma rápida e segura</p>
               </div>
             </div>
           </div>
