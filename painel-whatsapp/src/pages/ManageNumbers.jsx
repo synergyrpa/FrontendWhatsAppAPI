@@ -33,6 +33,20 @@ export default function ManageNumbers() {
       setErro('Formato inválido. Use apenas números com DDI+DDD+Número (Ex: 5511999999999)');
       return;
     }
+
+    // Verificar se o número já existe na lista atual
+    const listaAtual = tipoSelecionado === 'workers' ? workers : admins;
+    if (listaAtual.includes(novoNumero)) {
+      setErro(`O número ${novoNumero} já está cadastrado como ${tipoSelecionado === 'workers' ? 'dispositivo' : 'administrador'}.`);
+      return;
+    }
+
+    // Verificar se o número existe na outra lista (workers ou admins)
+    const outraLista = tipoSelecionado === 'workers' ? admins : workers;
+    if (outraLista.includes(novoNumero)) {
+      setErro(`O número ${novoNumero} já está cadastrado como ${tipoSelecionado === 'workers' ? 'administrador' : 'dispositivo'}. Remova-o da outra categoria primeiro.`);
+      return;
+    }
     
     setLoading(true);
     try {
