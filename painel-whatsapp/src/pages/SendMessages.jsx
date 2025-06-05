@@ -50,16 +50,69 @@ export default function SendMessages() {
   const [showBulkTable, setShowBulkTable] = useState(false); // Controla exibição da tabela
   const [editingCell, setEditingCell] = useState(null); // {index, field} para controlar edição
   const [uploadSubMode, setUploadSubMode] = useState('single-message'); // 'single-message' ou 'personalized-messages'
+  const [connectedWorkers, setConnectedWorkers] = useState([]); // Números conectados
+  const [checkingStatus, setCheckingStatus] = useState(false); // Loading do status
   
   const fileInputRef = useRef(null);
   const bulkFileInputRef = useRef(null);
 
   useEffect(() => {
     setAnimated(true);
+    // Verifica o status dos números quando eles são carregados
     if (workers.length > 0) {
-      setFromNumber(workers[0]);
+      checkWorkersStatus();
     }
   }, [workers]);
+
+  // Função para verificar o status dos números
+  const checkWorkersStatus = async () => {
+    if (workers.length === 0) return;
+    
+    setCheckingStatus(true);
+    try {
+      console.log('🔍 SendMessages: Verificando status dos números:', workers);
+      
+      const statusPromises = workers.map(async (number) => {
+        try {
+          const response = await apiClient.get('/api/v2/numbers/status', {
+            params: { number }
+          });
+          return {
+            number,
+            status: response.data.description?.status || 'desconhecido'
+          };
+        } catch (err) {
+          console.warn(`Erro ao verificar status do número ${number}:`, err);
+          return {
+            number,
+            status: 'erro'
+          };
+        }
+      });
+
+      const statusResults = await Promise.all(statusPromises);
+      const connected = statusResults
+        .filter(result => result.status === 'conectado')
+        .map(result => result.number);
+      
+      console.log('✅ SendMessages: Números conectados:', connected);
+      setConnectedWorkers(connected);
+      
+      // Define o primeiro número conectado como padrão
+      if (connected.length > 0 && !fromNumber) {
+        setFromNumber(connected[0]);
+      }
+    } catch (err) {
+      console.error('Erro ao verificar status dos números:', err);
+      // Se der erro, usa todos os números como fallback
+      setConnectedWorkers(workers);
+      if (!fromNumber && workers.length > 0) {
+        setFromNumber(workers[0]);
+      }
+    } finally {
+      setCheckingStatus(false);
+    }
+  };
 
   // Limpar mensagens de sucesso/erro após alguns segundos
   useEffect(() => {
@@ -395,6 +448,12 @@ export default function SendMessages() {
       return;
     }
 
+    // Verificar se o número está conectado
+    if (!connectedWorkers.includes(fromNumber)) {
+      setError('O número selecionado não está conectado. Verifique o status e tente novamente.');
+      return;
+    }
+
     if (sendMode === 'individual' && !validatePhoneNumber(toNumber)) {
       setError('Número de destino inválido. Use apenas números (Ex: 5511999999999)');
       return;
@@ -641,20 +700,57 @@ export default function SendMessages() {
                   <select
                     value={fromNumber}
                     onChange={(e) => setFromNumber(e.target.value)}
-                    className="pl-10 w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all appearance-none bg-white"
+                    disabled={checkingStatus}
+                    className="pl-10 w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all appearance-none bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <option value="">Selecione um número...</option>
-                    {workers.map((number) => (
+                    <option value="">
+                      {checkingStatus ? 'Verificando status...' : 'Selecione um número...'}
+                    </option>
+                    {connectedWorkers.map((number) => (
                       <option key={number} value={number}>
-                        {number}
+                        {number} ✓ Conectado
                       </option>
                     ))}
+                    {/* Mostrar números desconectados com indicação */}
+                    {workers
+                      .filter(number => !connectedWorkers.includes(number))
+                      .map((number) => (
+                        <option key={number} value={number} disabled>
+                          {number} ✗ Desconectado
+                        </option>
+                      ))
+                    }
                   </select>
                   <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                     <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
                     </svg>
                   </div>
+                </div>
+                {/* Informação sobre status dos números */}
+                <div className="text-xs text-gray-500 mt-1 flex items-center">
+                  {checkingStatus ? (
+                    <>
+                      <div className="animate-spin rounded-full h-3 w-3 border border-gray-300 border-t-blue-600 mr-2"></div>
+                      Verificando status dos números...
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                      {connectedWorkers.length} de {workers.length} números conectados
+                      {connectedWorkers.length === 0 && (
+                        <span className="text-red-500 ml-2">⚠️ Nenhum número conectado disponível</span>
+                      )}
+                      <button
+                        onClick={checkWorkersStatus}
+                        disabled={checkingStatus}
+                        className="ml-2 text-blue-600 hover:text-blue-800 underline disabled:opacity-50"
+                        title="Atualizar status dos números"
+                      >
+                        Atualizar
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
               
