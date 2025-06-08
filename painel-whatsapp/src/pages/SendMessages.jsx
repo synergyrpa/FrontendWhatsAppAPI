@@ -455,7 +455,7 @@ export default function SendMessages() {
     }
 
     if (sendMode === 'individual' && !validatePhoneNumber(toNumber)) {
-      setError('Número de destino inválido. Use apenas números (Ex: 5511999999999)');
+      setError('Número de destino inválido. Use apenas números (Ex: 551187654321)');
       return;
     }
 
@@ -595,9 +595,9 @@ export default function SendMessages() {
     // Criar dados de exemplo com duas colunas
     const ws = XLSX.utils.aoa_to_sheet([
       ['número', 'mensagem'], // Cabeçalho
-      ['5511999999999', 'Olá João! Como você está?'],
-      ['5511988888888', 'Oi Maria, tudo bem?'],
-      ['5511977777777', 'Boa tarde Pedro! Lembre-se da reunião às 14h.']
+      ['551199999999', 'Olá João! Como você está?'],
+      ['551188888888', 'Oi Maria, tudo bem?'],
+      ['551177777777', 'Boa tarde Pedro! Lembre-se da reunião às 14h.']
     ]);
     
     const wb = XLSX.utils.book_new();
@@ -768,12 +768,12 @@ export default function SendMessages() {
                       type="text"
                       value={toNumber}
                       onChange={(e) => setToNumber(e.target.value)}
-                      placeholder="Ex: 5511999999999"
+                      placeholder="Ex: 551199999999"
                       className="pl-10 w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
                     />
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    Use o formato internacional, apenas números (Ex: 5511999999999)
+                    Use o formato internacional, apenas números (Ex: 551199999999)
                   </p>
                 </div>
               )}
@@ -842,7 +842,7 @@ export default function SendMessages() {
                         }}
                         rows={6}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                        placeholder="5511999999999&#10;5511988888888&#10;5511977777777&#10;&#10;Ou separados por vírgula:&#10;5511999999999, 5511988888888, 5511977777777"
+                        placeholder="551199999999&#10;551188888888&#10;551177777777&#10;&#10;Ou separados por vírgula:&#10;551199999999, 551188888888, 551177777777"
                       />
                       
                       {/* Resumo dos números válidos/inválidos */}
@@ -1061,7 +1061,7 @@ export default function SendMessages() {
                                                 : 'border-red-300 bg-red-50'
                                               }
                                               focus:outline-none focus:ring-2 focus:ring-blue-300`}
-                                            placeholder="5511999999999"
+                                            placeholder="551199999999"
                                           />
                                         </td>
                                         <td className="px-3 py-2">
@@ -1378,7 +1378,7 @@ export default function SendMessages() {
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
-                  Use o formato internacional para os números (Ex: 5511999999999)
+                  Use o formato internacional para os números (Ex: 551199999999)
                 </li>
                 <li className="flex items-start">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
@@ -1473,11 +1473,11 @@ export default function SendMessages() {
                 <div className="bg-gray-50 p-3 rounded-lg text-sm text-gray-700">
                   <p className="mb-2">Digite os números separados por quebra de linha ou vírgula:</p>
                   <code className="block bg-white p-2 rounded border">
-                    5511999999999<br/>
-                    5511988888888<br/>
-                    5511977777777<br/>
+                    551199999999<br/>
+                    551188888888<br/>
+                    551177777777<br/>
                     <br/>
-                    Ou: 5511999999999, 5511988888888, 5511977777777
+                    Ou: 551199999999, 551188888888, 551177777777
                   </code>
                 </div>
               </div>
@@ -1494,15 +1494,15 @@ export default function SendMessages() {
                     </thead>
                     <tbody>
                       <tr>
-                        <td className="py-2 px-4 border-b border-r border-gray-200">5511999999999</td>
+                        <td className="py-2 px-4 border-b border-r border-gray-200">551199999999</td>
                         <td className="py-2 px-4 border-b border-gray-200">Olá João! Como você está?</td>
                       </tr>
                       <tr>
-                        <td className="py-2 px-4 border-b border-r border-gray-200">5511988888888</td>
+                        <td className="py-2 px-4 border-b border-r border-gray-200">551188888888</td>
                         <td className="py-2 px-4 border-b border-gray-200">Oi Maria, tudo bem?</td>
                       </tr>
                       <tr>
-                        <td className="py-2 px-4 border-b border-r border-gray-200">5511977777777</td>
+                        <td className="py-2 px-4 border-b border-r border-gray-200">551177777777</td>
                         <td className="py-2 px-4 border-b border-gray-200">Pedro, reunião às 14h!</td>
                       </tr>
                     </tbody>
