@@ -10,7 +10,8 @@ import {
   FaWifi, 
   FaWhatsapp,
   FaChevronRight,
-  FaPaperPlane
+  FaPaperPlane,
+  FaComments
 } from 'react-icons/fa';
 
 const Sidebar = ({ onCollapse }) => {
@@ -31,6 +32,7 @@ const Sidebar = ({ onCollapse }) => {
     { path: '/manage-numbers', label: 'Números', icon: <FaMobile /> },
     { path: '/reports', label: 'Relatórios', icon: <FaChartBar /> },
     { path: '/status', label: 'Status', icon: <FaWifi /> },
+    { path: '/chatdesk', label: 'ChatDesk', icon: <FaComments /> },
   ];
 
   const toggleCollapse = () => {

@@ -11,6 +11,8 @@ import Register from './pages/RegisterRequestOTP';
 import OTPVerification from './pages/LoginValidateOTP';
 import Home from './pages/Home';
 import SendMessages from './pages/SendMessages';
+import ChatDesk from './pages/ChatDesk';
+import ChatDeskReports from './pages/ChatDeskReports';
 
 export default function App() {
   const [appError, setAppError] = useState(null);
@@ -116,6 +118,22 @@ export default function App() {
           element={
             <PrivateRoute>
               <SendMessages />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/chatdesk"
+          element={
+            <PrivateRoute>
+              <ChatDesk />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/chatdesk/reports"
+          element={
+            <PrivateRoute>
+              <ChatDeskReports />
             </PrivateRoute>
           }
         />
