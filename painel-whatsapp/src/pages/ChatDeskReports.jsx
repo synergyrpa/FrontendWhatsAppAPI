@@ -123,6 +123,22 @@ export default function ChatDeskReports() {
     }
   };
 
+  const calculateAverageResponseTime = (conversations) => {
+    if (!conversations || conversations.length === 0) return null;
+    
+    const conversationsWithResponse = conversations.filter(conv => 
+      conv.response_time_minutes && conv.response_time_minutes > 0
+    );
+    
+    if (conversationsWithResponse.length === 0) return null;
+    
+    const totalTime = conversationsWithResponse.reduce((sum, conv) => 
+      sum + conv.response_time_minutes, 0
+    );
+    
+    return totalTime / conversationsWithResponse.length;
+  };
+
   const loadReport = async (reportFilters = filters) => {
     if (!hasAccess || !accountInfo) return;
 
@@ -276,8 +292,8 @@ export default function ChatDeskReports() {
                 <h1 className="text-3xl font-bold text-gray-800">Relatórios ChatDesk</h1>
                 {accountInfo && (
                   <p className="text-gray-600">
-                    Conta: <span className="font-medium">{accountInfo.account_name}</span> | 
-                    Agente: <span className="font-medium">{accountInfo.agent_name}</span>
+                    Conta: <span className="font-medium">{accountInfo.account_name || 'N/A'}</span> | 
+                    Agente: <span className="font-medium">{accountInfo.agent_name || 'N/A'}</span>
                   </p>
                 )}
               </div>
@@ -385,7 +401,7 @@ export default function ChatDeskReports() {
                   <div>
                     <h3 className="text-sm font-medium text-gray-500">Total Conversas</h3>
                     <p className="text-2xl font-bold text-blue-600">
-                      {data.data.statistics.total_conversations}
+                      {data.data.statistics.total_conversations || '0'}
                     </p>
                   </div>
                 </div>
@@ -397,7 +413,9 @@ export default function ChatDeskReports() {
                   <div>
                     <h3 className="text-sm font-medium text-gray-500">Taxa Resposta</h3>
                     <p className="text-2xl font-bold text-green-600">
-                      {data.data.statistics.response_rate_percentage}%
+                      {data.data.statistics.response_rate_percentage !== undefined 
+                        ? `${data.data.statistics.response_rate_percentage}%` 
+                        : 'N/A'}
                     </p>
                   </div>
                 </div>
@@ -407,10 +425,34 @@ export default function ChatDeskReports() {
                 <div className="flex items-center">
                   <FaClock className="text-orange-600 text-2xl mr-3" />
                   <div>
-                    <h3 className="text-sm font-medium text-gray-500">Tempo Médio</h3>
+                    <h3 className="text-sm font-medium text-gray-500">Tempo Médio de 1ª Resposta</h3>
                     <p className="text-2xl font-bold text-orange-600">
-                      {data.data.statistics.average_response_time?.toFixed(1) || 'N/A'} min
+                      {(() => {
+                        const avgTime = data.data.statistics.average_response_time || 
+                                       calculateAverageResponseTime(data.data.conversations);
+                        if (avgTime) {
+                          const respondedCount = data.data.conversations.filter(conv => 
+                            conv.response_time_minutes && conv.response_time_minutes > 0
+                          ).length;
+                          return (
+                            <span title={`${respondedCount} de ${data.data.conversations.length} conversas com resposta`}>
+                              {avgTime.toFixed(1)} min
+                            </span>
+                          );
+                        }
+                        return 'N/A';
+                      })()}
                     </p>
+                    {data.data.conversations && data.data.conversations.length > 0 && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {(() => {
+                          const respondedCount = data.data.conversations.filter(conv => 
+                            conv.response_time_minutes && conv.response_time_minutes > 0
+                          ).length;
+                          return `${respondedCount}/${data.data.conversations.length} com resposta`;
+                        })()}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -421,7 +463,7 @@ export default function ChatDeskReports() {
                   <div>
                     <h3 className="text-sm font-medium text-gray-500">Período</h3>
                     <p className="text-sm font-bold text-gray-600">
-                      {data.start_date} <br/> a {data.end_date}
+                      {data.start_date || 'N/A'} <br/> a {data.end_date || 'N/A'}
                     </p>
                   </div>
                 </div>
@@ -466,7 +508,7 @@ export default function ChatDeskReports() {
                     {data.data.conversations.map((conv, index) => (
                       <tr key={conv.conversation_id || index} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {conv.display_id}
+                          {conv.display_id || 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {conv.customer_name || 'N/A'}
@@ -491,7 +533,7 @@ export default function ChatDeskReports() {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {conv.conversation_date}
+                          {conv.conversation_date || 'N/A'}
                         </td>
                       </tr>
                     ))}
