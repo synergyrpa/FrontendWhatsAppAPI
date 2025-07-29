@@ -32,6 +32,10 @@ Esta documentação descreve a integração da plataforma ChatDesk no Painel Wha
 VITE_CHATDESK_URL=https://chatdesk.synergyrpa.com/
 VITE_CHATDESK_API_URL=http://localhost:8000/api/v1/report
 VITE_CHATDESK_API_TOKEN=your-secret-token-here
+
+# Contact Information
+VITE_SUPPORT_EMAIL=suporte@synergyrpa.com
+VITE_SUPPORT_WHATSAPP=5511999999999
 ```
 
 ### Configuração da API
@@ -173,8 +177,8 @@ curl -X POST "http://localhost:8000/api/v1/report/agent/account" \
 
 Para problemas de acesso ou configuração:
 
-- **Email**: suporte@synergyrpa.com
-- **WhatsApp**: +55 11 99999-9999
+- **Email**: Configurado via `VITE_SUPPORT_EMAIL` (padrão: suporte@synergyrpa.com)
+- **WhatsApp**: Configurado via `VITE_SUPPORT_WHATSAPP` (padrão: 5511999999999)
 - **Assunto**: "Solicitação de Acesso - ChatDesk Relatórios"
 
 ## 🔄 Próximas Melhorias

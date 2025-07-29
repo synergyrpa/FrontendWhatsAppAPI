@@ -90,6 +90,8 @@ export default function ChatDeskReports() {
   // Configuração da API (usar variáveis de ambiente)
   const API_BASE_URL = import.meta.env.VITE_CHATDESK_API_URL || 'http://localhost:8000/api/v1/report';
   const API_TOKEN = import.meta.env.VITE_CHATDESK_API_TOKEN || 'your-secret-token-here';
+  const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL || 'suporte@synergyrpa.com';
+  const supportWhatsApp = import.meta.env.VITE_SUPPORT_WHATSAPP || '5511999999999';
   
   const api = new ChatDeskReportsAPI(API_BASE_URL, API_TOKEN);
 
@@ -242,7 +244,7 @@ export default function ChatDeskReports() {
                 
                 <div className="grid md:grid-cols-2 gap-4 max-w-lg mx-auto">
                   <a 
-                    href="mailto:suporte@synergyrpa.com?subject=Solicitação de Acesso - ChatDesk Relatórios"
+                    href={`mailto:${supportEmail}?subject=Solicitação de Acesso - ChatDesk Relatórios`}
                     className="flex items-center justify-center bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-all"
                   >
                     <FaEnvelope className="mr-2" />
@@ -250,7 +252,7 @@ export default function ChatDeskReports() {
                   </a>
                   
                   <a 
-                    href="https://wa.me/5511999999999?text=Olá, gostaria de solicitar acesso aos relatórios do ChatDesk"
+                    href={`https://wa.me/${supportWhatsApp}?text=Olá, gostaria de solicitar acesso aos relatórios do ChatDesk`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-center bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-all"

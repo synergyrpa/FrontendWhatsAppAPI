@@ -19,6 +19,8 @@ export default function ChatDesk() {
   const [isLoading, setIsLoading] = useState(false);
 
   const chatdeskUrl = import.meta.env.VITE_CHATDESK_URL || 'https://chatdesk.synergyrpa.com/';
+  const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL || 'suporte@synergyrpa.com';
+  const supportWhatsApp = import.meta.env.VITE_SUPPORT_WHATSAPP || '5511999999999';
 
   const handleAccessPlatform = () => {
     window.open(chatdeskUrl, '_blank');
@@ -162,13 +164,13 @@ export default function ChatDesk() {
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <a 
-                href="mailto:suporte@synergyrpa.com" 
+                href={`mailto:${supportEmail}`}
                 className="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-all"
               >
                 Contato por Email
               </a>
               <a 
-                href="https://wa.me/5511999999999" 
+                href={`https://wa.me/${supportWhatsApp}`}
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="bg-green-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-600 transition-all"
