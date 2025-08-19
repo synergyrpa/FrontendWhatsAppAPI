@@ -496,7 +496,7 @@ export default function ChatDeskReports() {
                         Agente
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Tempo Resposta
+                        Tempo de Primeira Resposta
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Performance
@@ -510,7 +510,7 @@ export default function ChatDeskReports() {
                     {data.data.conversations.map((conv, index) => (
                       <tr key={conv.conversation_id || index} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {conv.display_id || 'N/A'}
+                          {conv.display_id || conv.conversation_id || 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {conv.customer_name || 'N/A'}
