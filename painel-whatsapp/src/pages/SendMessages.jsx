@@ -13,7 +13,6 @@ import {
   FaUsers, 
   FaCheckCircle, 
   FaExclamationTriangle,
-  FaRegularFile,
   FaTrash,
   FaTimes,
   FaDownload,
