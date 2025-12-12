@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import apiClient from '../utils/apiClient';
 import DashboardLayout from '../layouts/DashboardLayout';
@@ -12,9 +12,17 @@ export default function QRCodePage() {
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [conectado, setConectado] = useState(false);
   const [erro, setErro] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [refreshCount, setRefreshCount] = useState(0);
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [qrLoading, setQrLoading] = useState(false);
   const [animated, setAnimated] = useState(false);
+  const QR_POLL_INTERVAL_MS = Number(import.meta.env.VITE_QR_POLL_INTERVAL_MS) || 5000;
+  const pollSeconds = Math.round(QR_POLL_INTERVAL_MS / 1000);
+  const qrCodeRef = useRef('');
+
+  const updateQrCode = useCallback((value) => {
+    setQrCodeUrl(value);
+    qrCodeRef.current = value;
+  }, []);
 
   useEffect(() => {
     setAnimated(true);
@@ -27,10 +35,10 @@ export default function QRCodePage() {
     }
   }, [params, workers]);
 
-  const loadStatusWorker = async (number) => {
+  const loadStatusWorker = useCallback(async (number) => {
     if (!number) return;
     
-    setLoading(true);
+    setStatusLoading(true);
     try {
       console.log('📱 QRCode: Verificando status para número:', number);
       const res = await apiClient.get('/api/v2/numbers/status', {
@@ -44,29 +52,88 @@ export default function QRCodePage() {
       console.error('Erro ao verificar status:', err);
       setErro('Erro ao verificar o status do número');
     } finally {
-      setLoading(false);
+      setStatusLoading(false);
     }
-  };
+  }, []);
+
+  const fetchQrCode = useCallback(async (number, { forceLoader = false } = {}) => {
+    if (!number) return;
+
+    const hadQrBefore = Boolean(qrCodeRef.current);
+    const shouldShowLoader = forceLoader || !hadQrBefore;
+
+    if (shouldShowLoader) {
+      setQrLoading(true);
+    }
+
+    try {
+      const res = await apiClient.get('/api/v2/numbers/connect', {
+        params: { number }
+      });
+
+      if (res.status !== 200) {
+        console.error('⚠️ QRCode: API retornou status inesperado', {
+          status: res.status,
+          data: res.data
+        });
+
+        if (!hadQrBefore || forceLoader) {
+          updateQrCode('');
+          setErro('Não foi possível gerar o QR Code. Tente novamente.');
+        }
+        return;
+      }
+
+      const qrBase64 = res.data?.description?.qr_base64?.trim();
+
+      if (qrBase64) {
+        updateQrCode(qrBase64);
+        setConectado(false);
+        setErro('');
+      } else {
+        console.info('ℹ️ QRCode: Campo qr_base64 vazio, considerando número já conectado.');
+        updateQrCode('');
+        setConectado(true);
+        setErro('');
+      }
+    } catch (err) {
+      console.error('Erro ao buscar QR Code via API:', err);
+
+      if (!hadQrBefore || forceLoader) {
+        updateQrCode('');
+        setErro('Erro ao gerar QR Code');
+      }
+    } finally {
+      if (shouldShowLoader) {
+        setQrLoading(false);
+      }
+    }
+  }, [updateQrCode]);
 
   // Dispara quando um número é selecionado
   useEffect(() => {
     if (!numeroSelecionado) return;
 
-    loadStatusWorker(numeroSelecionado); // checa status imediato
+    setErro('');
+    setConectado(false);
+    updateQrCode('');
 
-    const urlBase = `https://users-wpp-websocket-context.s3.amazonaws.com/qrcodes/${numeroSelecionado}.png`;
-    setQrCodeUrl(`${urlBase}?t=${Date.now()}`);
+    loadStatusWorker(numeroSelecionado);
+    fetchQrCode(numeroSelecionado, { forceLoader: true });
 
     const interval = setInterval(() => {
       loadStatusWorker(numeroSelecionado);
-      setQrCodeUrl(`${urlBase}?t=${Date.now()}`);
-    }, 10000); // Verificar a cada 10 segundos
+      fetchQrCode(numeroSelecionado);
+    }, QR_POLL_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, [numeroSelecionado, refreshCount]);
+  }, [numeroSelecionado, QR_POLL_INTERVAL_MS, loadStatusWorker, fetchQrCode, updateQrCode]);
 
   const handleRefresh = () => {
-    setRefreshCount(prev => prev + 1);
+    if (!numeroSelecionado) return;
+    setErro('');
+    fetchQrCode(numeroSelecionado, { forceLoader: true });
+    loadStatusWorker(numeroSelecionado);
   };
 
   const formatPhoneNumber = (number) => {
@@ -128,10 +195,10 @@ export default function QRCodePage() {
 
             <button
               onClick={handleRefresh}
-              disabled={loading || !numeroSelecionado}
+              disabled={qrLoading || statusLoading || !numeroSelecionado}
               className="flex items-center justify-center px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <FaSync className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
+              <FaSync className={`mr-2 ${qrLoading ? 'animate-spin' : ''}`} />
               Atualizar QR Code
             </button>
           </div>
@@ -165,7 +232,7 @@ export default function QRCodePage() {
                 </button>
               </div>
             </div>
-          ) : loading ? (
+          ) : qrLoading ? (
             <div className="flex flex-col items-center justify-center py-16">
               <div className="mb-4">
                 <div className="animate-spin rounded-full h-16 w-16 border-4 border-green-500 border-t-transparent"></div>
@@ -195,7 +262,10 @@ export default function QRCodePage() {
                     src={qrCodeUrl}
                     alt="QR Code para WhatsApp"
                     className="w-72 h-72 rounded-lg border-4 border-green-100 shadow-lg"
-                    onError={() => setErro('QR Code não encontrado ou expirado')}
+                    onError={() => {
+                      updateQrCode('');
+                      setErro('QR Code não encontrado ou expirado');
+                    }}
                   />
                   <div className="absolute -bottom-3 -right-3 bg-white p-1.5 rounded-full border-2 border-green-400 shadow-md">
                     <FaWhatsapp className="text-green-500 text-2xl" />
@@ -224,7 +294,7 @@ export default function QRCodePage() {
               </ol>
               
               <p className="text-sm text-gray-500 italic">
-                O QR Code será atualizado automaticamente a cada 10 segundos
+                O QR Code será atualizado automaticamente a cada {pollSeconds} segundos
               </p>
             </div>
           )}
